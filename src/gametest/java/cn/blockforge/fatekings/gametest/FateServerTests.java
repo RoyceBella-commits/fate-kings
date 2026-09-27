@@ -1,0 +1,404 @@
+package cn.blockforge.fatekings.gametest;
+
+import cn.blockforge.fatekings.combat.DamageShare;
+import cn.blockforge.fatekings.combat.Sides;
+import cn.blockforge.fatekings.combat.Terrain;
+import cn.blockforge.fatekings.config.FateConfig;
+import cn.blockforge.fatekings.entity.SwordQiEntity;
+import cn.blockforge.fatekings.combat.Judgement;
+import cn.blockforge.fatekings.combat.JudgementRules.Weapon;
+import cn.blockforge.fatekings.compat.JjkCompat;
+import cn.blockforge.fatekings.hero.Enkidu;
+import cn.blockforge.fatekings.king.KingRules;
+import cn.blockforge.fatekings.king.KingState;
+import cn.blockforge.fatekings.king.Kings;
+import cn.blockforge.fatekings.king.Skills;
+import cn.blockforge.fatekings.npc.ArtoriaEntity;
+import cn.blockforge.fatekings.npc.GilgameshEntity;
+import cn.blockforge.fatekings.registry.FateDamage;
+import cn.blockforge.fatekings.registry.FateEffects;
+import cn.blockforge.fatekings.registry.FateEntities;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * Server game tests of the hard rules. The Gojo x Sukuna ones run only when that mod is loaded
+ * (it is, in this project's development runs).
+ */
+public class FateServerTests {
+    private static <T extends Mob> T still(T mob) {
+        mob.setNoAi(true);
+        mob.setNoGravity(true);
+        return mob;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static LivingEntity spawnJjk(GameTestHelper h, Identifier id, double x, double y, double z) {
+        EntityType<Entity> type = (EntityType<Entity>)BuiltInRegistries.ENTITY_TYPE.getValue(id);
+        Entity e = h.spawn(type, new Vec3(x, y, z));
+        if (e instanceof Mob m) still(m);
+        return (LivingEntity)e;
+    }
+
+    @GameTest
+    public void excaliburKillsVanillaCreatures(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 1.5f, 2.0f, 1.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 3.5f, 2.0f, 3.5f));
+        LivingEntity villager = still(h.spawn(EntityTypes.VILLAGER, 5.5f, 2.0f, 3.5f));
+        LivingEntity warden = still(h.spawn(EntityTypes.WARDEN, 3.5f, 2.0f, 6.0f));
+        WitherBoss wither = still(h.spawn(EntityTypes.WITHER, 6.0f, 3.0f, 6.0f));
+        wither.makeInvulnerable();
+        for (LivingEntity t : new LivingEntity[]{zombie, villager, warden, wither}) {
+            Judgement.strike(level, saber, null, t, Weapon.EXCALIBUR, 1.0f);
+            h.assertTrue(t.isDeadOrDying(), "Excalibur must kill " + t.getType());
+        }
+        h.succeed();
+    }
+
+    @GameTest
+    public void excaliburKillsTheDragon(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 1.5f, 2.0f, 1.5f));
+        LivingEntity dragon = still(h.spawn(EntityTypes.ENDER_DRAGON, 4.0f, 4.0f, 4.0f));
+        Judgement.strike(level, saber, null, dragon, Weapon.EXCALIBUR, 1.0f);
+        h.assertTrue(dragon.isDeadOrDying() || dragon.getHealth() <= 0.0f, "Excalibur must kill the ender dragon");
+        dragon.discard();
+        h.succeed();
+    }
+
+    @GameTest
+    public void eaFlattensCreatures(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        LivingEntity golem = still(h.spawn(EntityTypes.IRON_GOLEM, 4.5f, 2.0f, 4.5f));
+        Judgement.strike(level, gil, null, golem, Weapon.EA, 1.0f);
+        h.assertTrue(golem.isDeadOrDying(), "4000 damage must kill an iron golem");
+        h.succeed();
+    }
+
+    @GameTest
+    public void kingsTakeOneOrTenPercent(GameTestHelper h) {
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 5.5f, 2.0f, 5.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 3.5f, 2.0f, 1.5f));
+        DamageSource fromZombie = zombie.damageSources().mobAttack(zombie);
+        DamageSource fromKing = saber.damageSources().mobAttack(saber);
+        h.assertTrue(Math.abs(DamageShare.apply(gil, fromZombie, 100.0f) - 1.0f) < 1.0E-3, "vanilla hits: 1%");
+        h.assertTrue(Math.abs(DamageShare.apply(gil, fromKing, 100.0f) - 10.0f) < 1.0E-3, "another king: 10%");
+        h.assertTrue(Math.abs(DamageShare.apply(saber, gil.damageSources().mobAttack(gil), 100.0f) - 10.0f) < 1.0E-3, "king on king: 10%");
+        h.assertTrue(DamageShare.apply(zombie, fromKing, 100.0f) == 100.0f, "no share for ordinary mobs");
+        // Everything else is 1%: another mod's entity (here an ownerless sword light), the world, no source.
+        SwordQiEntity stray = new SwordQiEntity(FateEntities.SWORD_QI, h.getLevel());
+        h.assertTrue(Math.abs(DamageShare.apply(gil, gil.damageSources().indirectMagic(stray, null), 100.0f) - 1.0f) < 1.0E-3, "other mods: 1%");
+        h.assertTrue(Math.abs(DamageShare.apply(gil, gil.damageSources().magic(), 100.0f) - 1.0f) < 1.0E-3, "no source: 1%");
+        h.succeed();
+    }
+
+    @GameTest
+    public void npcsHaveTwoHundredHealth(GameTestHelper h) {
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 5.5f, 2.0f, 5.5f));
+        for (LivingEntity k : new LivingEntity[]{gil, saber}) {
+            h.assertTrue(k.getMaxHealth() == 200.0f && k.getHealth() == 200.0f, "NPC health 200 (" + k.getType() + ")");
+            h.assertTrue(Kings.of(k).gold == KingRules.NPC_GOLD_HP, "NPC gold 150 (" + k.getType() + ")");
+        }
+        h.succeed();
+    }
+
+    @GameTest
+    public void playersHitNpcsTwoAndAHalfTimes(GameTestHelper h) {
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 5.5f, 2.0f, 5.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 3.5f, 2.0f, 1.5f));
+        Player player = h.makeMockPlayer(GameType.SURVIVAL);
+        for (LivingEntity k : new LivingEntity[]{gil, saber}) {
+            float fromPlayer = DamageShare.apply(k, k.damageSources().playerAttack(player), 100.0f);
+            float fromZombie = DamageShare.apply(k, k.damageSources().mobAttack(zombie), 100.0f);
+            h.assertTrue(Math.abs(fromPlayer - 2.5f) < 1.0E-3 && Math.abs(fromPlayer / fromZombie - 2.5f) < 1.0E-3,
+                "a player's blow on an NPC king counts x2.5 (" + fromPlayer + " vs " + fromZombie + ")");
+        }
+        h.assertTrue(DamageShare.apply(zombie, zombie.damageSources().playerAttack(player), 100.0f) == 100.0f, "ordinary mobs unchanged");
+        h.succeed();
+    }
+
+    @GameTest
+    public void gilgameshIsHostileButSparesTheHarmless(GameTestHelper h) {
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        LivingEntity villager = still(h.spawn(EntityTypes.VILLAGER, 5.5f, 2.0f, 1.5f));
+        LivingEntity cow = still(h.spawn(EntityTypes.COW, 5.5f, 2.0f, 5.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 1.5f, 2.0f, 5.5f));
+        h.assertTrue(gil instanceof Enemy && FateEntities.GILGAMESH.getCategory() == MobCategory.MONSTER, "Gilgamesh is a hostile creature");
+        Player unarmed = h.makeMockPlayer(GameType.SURVIVAL);
+        Player armed = h.makeMockPlayer(GameType.SURVIVAL);
+        armed.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_SWORD));
+        Player creative = h.makeMockPlayer(GameType.CREATIVE);
+        h.assertTrue(Sides.noncombatant(villager) && Sides.noncombatant(cow), "villagers and grazing animals cannot fight");
+        h.assertTrue(Sides.noncombatant(unarmed) && Sides.noncombatant(creative), "empty hands / creative: no fight");
+        h.assertFalse(Sides.noncombatant(armed), "a sword in hand is a fighter");
+        h.assertFalse(Sides.noncombatant(zombie), "monsters always fight");
+        h.assertFalse(gil.canHarm(villager) || gil.canHarm(cow) || gil.canHarm(unarmed), "he does not strike the harmless");
+        h.assertTrue(gil.canHarm(zombie), "monsters are struck down");
+        // Hit by one of them (a revenge target): a sneer, and the target is dropped.
+        gil.setTarget(villager);
+        h.runAfterDelay(3, () -> {
+            h.assertTrue(gil.getTarget() == null, "the harmless are left alone even as targets");
+            h.succeed();
+        });
+    }
+
+    @GameTest
+    public void swordLightCutsTerrainOnlyWhenAllowed(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 6.5f, 2.0f, 0.5f));
+        BlockPos a = new BlockPos(2, 2, 3), b = new BlockPos(2, 2, 4);
+        h.setBlock(a, Blocks.STONE);
+        h.setBlock(b, Blocks.STONE);
+        Vec3 origin = h.absoluteVec(new Vec3(0.5, 2.5, 3.5));
+        Vec3 dir = h.absoluteVec(new Vec3(1.5, 2.5, 3.5)).subtract(origin);
+        boolean before = FateConfig.terrainDestruction();
+        try {
+            FateConfig.setTerrainDestruction(false);
+            // One step of flight by hand, then gone: nothing leaves the test area.
+            SwordQiEntity off = SwordQiEntity.fire(level, saber, origin, dir, 0.0f);
+            off.tick();
+            off.discard();
+        } finally {
+            FateConfig.setTerrainDestruction(true);
+        }
+        h.runAfterDelay(3, () -> {
+            h.assertBlockPresent(Blocks.STONE, a);
+            h.assertBlockPresent(Blocks.STONE, b);
+            h.assertTrue(Terrain.enabled(), "terrain effects on");
+            SwordQiEntity on = SwordQiEntity.fire(level, saber, origin, dir, 0.0f);
+            on.tick();
+            on.discard();
+            h.runAfterDelay(3, () -> {
+                if (!before) FateConfig.setTerrainDestruction(false);
+                h.assertBlockNotPresent(Blocks.STONE, a);
+                h.assertBlockNotPresent(Blocks.STONE, b);
+                h.succeed();
+            });
+        });
+    }
+
+    @GameTest
+    public void avalonBlocksEnumaElish(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 5.5f, 2.0f, 5.5f));
+        KingState s = Kings.of(saber);
+        s.cooldown(Skills.EXCALIBUR, level.getGameTime(), KingRules.EXCALIBUR);
+        float hp = saber.getHealth();
+        float gold = s.gold;
+        Judgement.strike(level, gil, null, saber, Weapon.EA, 1.0f);
+        h.assertTrue(saber.getHealth() == hp && s.gold == gold, "the utopia takes Ea entirely");
+        h.assertTrue(s.domeActive(level.getGameTime()), "the dome is up");
+        h.assertTrue(s.ready(Skills.EXCALIBUR, level.getGameTime()), "Excalibur is ready again (counter)");
+        h.assertTrue(level.getGameTime() < s.counterUntil, "counter window open");
+        h.assertFalse(Kings.of(saber).ready(Skills.AVALON_DOME, level.getGameTime()), "the unfolding is on cooldown");
+        h.succeed();
+    }
+
+    @GameTest
+    public void avalonRefusesOneLethalWound(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 5.5f, 2.0f, 5.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 2.5f, 2.0f, 2.5f));
+        KingState s = Kings.of(saber);
+        s.cooldown(Skills.AVALON_DOME, level.getGameTime(), KingRules.AVALON_DOME); // no dome for this one
+        saber.hurtServer(level, zombie.damageSources().mobAttack(zombie), 1.0E7f);
+        h.assertTrue(saber.isAlive() && saber.getHealth() > 0.0f, "Avalon refuses the lethal wound");
+        h.assertFalse(s.ready(Skills.AVALON_LETHAL, level.getGameTime()), "lethal protection on cooldown");
+        h.succeed();
+    }
+
+    @GameTest
+    public void knightSparesTheLineOfFire(GameTestHelper h) {
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 1.5f, 2.0f, 4.5f));
+        still(h.spawn(EntityTypes.VILLAGER, 5.5f, 2.0f, 4.5f));
+        Vec3 eye = saber.getEyePosition();
+        h.assertFalse(saber.lineClear(eye, new Vec3(1, 0, 0)), "a villager in the way: no Excalibur");
+        h.assertTrue(saber.lineClear(eye, new Vec3(-1, 0, 0)), "the other way is clear");
+        h.succeed();
+    }
+
+    @GameTest
+    public void chainsBind(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 5.5f, 2.0f, 5.5f));
+        Enkidu.bindTarget(level, gil, zombie);
+        h.assertTrue(zombie.hasEffect(FateEffects.HEAVENS_CHAIN), "Enkidu binds");
+        h.assertTrue(Enkidu.bound(zombie), "binding is tracked");
+        h.succeed();
+    }
+
+    // ---- With the Gojo x Sukuna mod ----
+
+    @GameTest
+    public void excaliburCripplesGojoButNeverKills(GameTestHelper h) {
+        if (!JjkCompat.LOADED) {
+            h.succeed();
+            return;
+        }
+        ServerLevel level = h.getLevel();
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 1.5f, 2.0f, 1.5f));
+        LivingEntity gojo = spawnJjk(h, JjkCompat.GOJO, 5.5, 2.0, 5.5);
+        for (int i = 0; i < 4; ++i) {
+            Judgement.strike(level, saber, null, gojo, Weapon.EXCALIBUR, 1.0f);
+            h.assertTrue(gojo.isAlive() && gojo.getHealth() > 0.0f && gojo.getHealth() <= 2.0f, "Gojo left at one heart, alive (" + i + ")");
+        }
+        h.assertTrue(gojo.hasEffect(FateEffects.EXCALIBUR_WOUND), "wound of the holy sword");
+        // The same knight cannot finish him while he is spared.
+        gojo.hurtServer(level, saber.damageSources().mobAttack(saber), 1.0E6f);
+        h.assertTrue(gojo.isAlive(), "her chivalry: she does not kill the helpless");
+        h.succeed();
+    }
+
+    @GameTest
+    public void eaAndExcaliburKillMahoraga(GameTestHelper h) {
+        if (!JjkCompat.LOADED) {
+            h.succeed();
+            return;
+        }
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 1.5f, 2.0f, 6.5f));
+        LivingEntity m1 = spawnJjk(h, JjkCompat.MAHORAGA, 5.5, 2.0, 2.5);
+        LivingEntity m2 = spawnJjk(h, JjkCompat.MAHORAGA, 5.5, 2.0, 6.0);
+        Judgement.strike(level, gil, null, m1, Weapon.EA, 1.0f);
+        Judgement.strike(level, saber, null, m2, Weapon.EXCALIBUR, 1.0f);
+        h.assertTrue(m1.isDeadOrDying(), "Ea kills Mahoraga");
+        h.assertTrue(m2.isDeadOrDying(), "Excalibur kills Mahoraga");
+        h.succeed();
+    }
+
+    @GameTest
+    public void onlyEaPiercesInfinity(GameTestHelper h) {
+        if (!JjkCompat.LOADED) {
+            h.succeed();
+            return;
+        }
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        LivingEntity gojo = spawnJjk(h, JjkCompat.GOJO, 5.5, 2.0, 5.5);
+        float hp = gojo.getHealth();
+        gojo.hurtServer(level, gil.damageSources().mobAttack(gil), 60.0f);
+        gojo.setInvulnerableTime(0);
+        gojo.hurtServer(level, FateDamage.source(level, FateDamage.CHAIN, gil, gil), 60.0f);
+        gojo.setInvulnerableTime(0);
+        h.assertTrue(gojo.getHealth() == hp, "fists and chains stop at Infinity");
+        gojo.hurtServer(level, FateDamage.source(level, FateDamage.ENUMA_ELISH, gil, gil), 95.0f);
+        h.assertTrue(gojo.getHealth() < hp, "Enuma Elish goes through Infinity");
+        h.succeed();
+    }
+
+    @GameTest
+    public void sorcerersTakeTenPercentFromKings(GameTestHelper h) {
+        if (!JjkCompat.LOADED) {
+            h.succeed();
+            return;
+        }
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 1.5f, 2.0f, 6.5f));
+        LivingEntity a = spawnJjk(h, JjkCompat.SUKUNA, 5.5, 2.0, 2.5);
+        LivingEntity b = spawnJjk(h, JjkCompat.SUKUNA, 5.5, 2.0, 6.0);
+        float ha = a.getHealth(), hb = b.getHealth();
+        a.hurtServer(level, zombie.damageSources().mobAttack(zombie), 100.0f);
+        b.hurtServer(level, gil.damageSources().mobAttack(gil), 100.0f);
+        float fromZombie = ha - a.getHealth(), fromKing = hb - b.getHealth();
+        h.assertTrue(fromKing > fromZombie * 3.0f && fromKing > 1.0f, "a king counts as a mod character (" + fromZombie + " vs " + fromKing + ")");
+        h.succeed();
+    }
+
+    @GameTest
+    public void gojoDealsTenPercentToBothKings(GameTestHelper h) {
+        if (!JjkCompat.LOADED) {
+            h.succeed();
+            return;
+        }
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 1.5f, 2.0f, 6.5f));
+        LivingEntity gojo = spawnJjk(h, JjkCompat.GOJO, 5.5, 2.0, 2.5);
+        LivingEntity sukuna = spawnJjk(h, JjkCompat.SUKUNA, 5.5, 2.0, 6.0);
+        // A technique on its own (Hollow Purple with nobody behind it) counts as well.
+        Entity purple = BuiltInRegistries.ENTITY_TYPE.getValue(JjkCompat.MURASAKI).create(level, EntitySpawnReason.COMMAND);
+        for (LivingEntity k : new LivingEntity[]{gil, saber}) {
+            h.assertTrue(Math.abs(DamageShare.apply(k, gojo.damageSources().mobAttack(gojo), 100.0f) - 10.0f) < 1.0E-3, "Gojo on " + k.getType() + ": 10%");
+            h.assertTrue(Math.abs(DamageShare.apply(k, sukuna.damageSources().mobAttack(sukuna), 100.0f) - 10.0f) < 1.0E-3, "Sukuna on " + k.getType() + ": 10%");
+            if (purple != null) {
+                h.assertTrue(Math.abs(DamageShare.apply(k, level.damageSources().indirectMagic(purple, null), 100.0f) - 10.0f) < 1.0E-3, "Hollow Purple on " + k.getType() + ": 10%");
+            }
+        }
+        // And the kings strike back twice as hard (their blows meet armour; the techniques do not): NPCs ...
+        h.assertTrue(DamageShare.apply(gojo, gil.damageSources().mobAttack(gil), 100.0f) == 200.0f, "Gilgamesh on Gojo x2");
+        h.assertTrue(DamageShare.apply(sukuna, saber.damageSources().mobAttack(saber), 100.0f) == 200.0f, "Artoria on Sukuna x2");
+        // ... and players in either regalia alike, their treasures included; an ordinary player does not.
+        Player hero = h.makeMockPlayer(GameType.SURVIVAL);
+        Player knight = h.makeMockPlayer(GameType.SURVIVAL);
+        Player plain = h.makeMockPlayer(GameType.SURVIVAL);
+        Kings.of(hero).king = KingRules.HERO;
+        Kings.of(knight).king = KingRules.KNIGHT;
+        SwordQiEntity light = new SwordQiEntity(FateEntities.SWORD_QI, level);
+        h.assertTrue(DamageShare.apply(gojo, gojo.damageSources().playerAttack(hero), 100.0f) == 200.0f, "hero player on Gojo x2");
+        h.assertTrue(DamageShare.apply(sukuna, level.damageSources().indirectMagic(light, knight), 100.0f) == 200.0f, "knight player's sword light on Sukuna x2");
+        h.assertTrue(DamageShare.apply(sukuna, sukuna.damageSources().playerAttack(plain), 100.0f) == 100.0f, "no bonus without the regalia");
+        h.assertTrue(gil.canHarm(gojo) && gil.canHarm(sukuna), "sorcerers are worth his treasures");
+        // Gojo's NPC goes after hostile creatures: Gilgamesh now is one, Artoria is not.
+        try {
+            var canHarm = gojo.getClass().getMethod("canHarm", LivingEntity.class);
+            h.assertTrue((Boolean)canHarm.invoke(gojo, gil), "Gojo attacks Gilgamesh of his own accord");
+            h.assertFalse((Boolean)canHarm.invoke(gojo, saber), "but leaves Artoria be");
+        } catch (ReflectiveOperationException e) {
+            h.fail("Gojo NPC canHarm: " + e);
+        }
+        h.succeed();
+    }
+
+    @GameTest
+    public void avalonIgnoresDomains(GameTestHelper h) {
+        if (!JjkCompat.LOADED) {
+            h.succeed();
+            return;
+        }
+        ServerLevel level = h.getLevel();
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 5.5f, 2.0f, 5.5f));
+        LivingEntity sukuna = spawnJjk(h, JjkCompat.SUKUNA, 1.5, 2.0, 1.5);
+        ResourceKey<DamageType> sureHit = ResourceKey.create(Registries.DAMAGE_TYPE, JjkCompat.SURE_HIT);
+        var holder = level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).get(sureHit);
+        if (holder.isEmpty()) {
+            h.succeed();
+            return;
+        }
+        saber.hurtServer(level, new DamageSource(holder.get(), sukuna, sukuna), 5000.0f);
+        h.assertFalse(Kings.of(saber).domeActive(level.getGameTime()), "no unfolding for the sure hit of a domain");
+        h.succeed();
+    }
+}

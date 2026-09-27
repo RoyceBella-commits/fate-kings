@@ -1,0 +1,234 @@
+{
+  "voice.gil_spawn": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_spawn"
+      }
+    ]
+  },
+  "voice.gil_arrogant": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_arrogant"
+      }
+    ]
+  },
+  "voice.gil_displeased": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_displeased"
+      }
+    ]
+  },
+  "voice.gil_serious": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_serious"
+      }
+    ]
+  },
+  "voice.gil_volley": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_volley"
+      }
+    ]
+  },
+  "voice.gil_chain": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_chain"
+      }
+    ]
+  },
+  "voice.gil_unlock": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_unlock"
+      }
+    ]
+  },
+  "voice.gil_ea_drawn": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_ea_drawn"
+      }
+    ]
+  },
+  "voice.gil_ea_chant": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_ea_chant"
+      }
+    ]
+  },
+  "voice.gil_ea_release": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_ea_release"
+      }
+    ]
+  },
+  "voice.gil_laugh": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_laugh"
+      }
+    ]
+  },
+  "voice.gil_hurt": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_hurt"
+      }
+    ]
+  },
+  "voice.gil_defeat": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_defeat"
+      }
+    ]
+  },
+  "voice.gil_defeat_saber": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_defeat_saber"
+      }
+    ]
+  },
+  "voice.gil_victory": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/gil_victory"
+      }
+    ]
+  },
+  "voice.saber_spawn": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_spawn"
+      }
+    ]
+  },
+  "voice.saber_salute": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_salute"
+      }
+    ]
+  },
+  "voice.saber_full_power": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_full_power"
+      }
+    ]
+  },
+  "voice.saber_strike_air": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_strike_air"
+      }
+    ]
+  },
+  "voice.saber_release_call": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_release_call"
+      }
+    ]
+  },
+  "voice.saber_excalibur_chant": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_excalibur_chant"
+      }
+    ]
+  },
+  "voice.saber_excalibur_release": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_excalibur_release"
+      }
+    ]
+  },
+  "voice.saber_vs_gil": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_vs_gil"
+      }
+    ]
+  },
+  "voice.saber_vs_sukuna": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_vs_sukuna"
+      }
+    ]
+  },
+  "voice.saber_avalon": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_avalon"
+      }
+    ]
+  },
+  "voice.saber_last_stand": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_last_stand"
+      }
+    ]
+  },
+  "voice.saber_hurt": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_hurt"
+      }
+    ]
+  },
+  "voice.saber_defeat": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_defeat"
+      }
+    ]
+  },
+  "voice.saber_victory": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/saber_victory"
+      }
+    ]
+  }
+}

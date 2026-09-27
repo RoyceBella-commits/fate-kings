@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "cn.blockforge.fatekings.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "PlayerPoseMixin",
+    "CameraShakeMixin",
+    "AttackInputMixin",
+    "SwingStyleMixin",
+    "FirstPersonSwingMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

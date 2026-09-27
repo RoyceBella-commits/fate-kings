@@ -1,0 +1,227 @@
+[
+ {
+  "id": "gil_spawn",
+  "character": "gil",
+  "label": "召唤",
+  "ja": "ふはははは！ この我(オレ)を呼ぶとは、運を使い果たしたな雑種！",
+  "zh": "哈哈哈哈哈哈！ 居然胆敢召唤本王，你的好运也就到此为止了，杂种！",
+  "url": "https://media.fgo.wiki/6/68/012di_sum.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_arrogant",
+  "character": "gil",
+  "label": "开始 1",
+  "ja": "雑種如きが、吠えるではないか",
+  "zh": "区区杂种，还真能吠叫呢。",
+  "url": "https://media.fgo.wiki/6/65/012di_btst1.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_displeased",
+  "character": "gil",
+  "label": "技能 2",
+  "ja": "存分に足掻くがいい",
+  "zh": "你就好好地垂死挣扎吧！",
+  "url": "https://media.fgo.wiki/d/d6/012di_sk2.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_serious",
+  "character": "gil",
+  "label": "Extra 2",
+  "ja": "興が乗ったわ！貴様は、手ずから仕留めてくれる！",
+  "zh": "来兴致了！　本王要亲手干掉你！",
+  "url": "https://media.fgo.wiki/3/3f/SV12_0_Extra2-2.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_volley",
+  "character": "gil",
+  "label": "攻击 8",
+  "ja": "受け切ってみるがいい！",
+  "zh": "试试看能不能接下吧！",
+  "url": "https://media.fgo.wiki/3/32/SV12_0_%E6%94%BB%E5%87%BB8.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_chain",
+  "character": "gil",
+  "label": "攻击 5",
+  "ja": "足枷をくれてやる！",
+  "zh": "给你上脚镣！",
+  "url": "https://media.fgo.wiki/b/b3/SV12_0_%E6%94%BB%E5%87%BB5.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_unlock",
+  "character": "gil",
+  "label": "宝具卡 1",
+  "ja": "宝物庫の鍵を開けてやろう",
+  "zh": "打开宝物库的门锁吧。",
+  "url": "https://media.fgo.wiki/7/70/012di_npse.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_ea_drawn",
+  "character": "gil",
+  "label": "宝具卡 3",
+  "ja": "出番だ。起きよ、エア",
+  "zh": "轮到你出场了。醒来吧，EA。",
+  "url": "https://media.fgo.wiki/5/5e/SV12_0_%E5%AE%9D%E5%85%B7%E5%8D%A13.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_laugh",
+  "character": "gil",
+  "label": "攻击 3",
+  "ja": "ふはははは！",
+  "zh": "呼哈哈哈哈！",
+  "url": "https://media.fgo.wiki/f/f6/012di_at3.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_hurt",
+  "character": "gil",
+  "label": "受击 1",
+  "ja": "おのれおのれおのれおのれぇ！！",
+  "zh": "该死该死该死该死……！",
+  "url": "https://media.fgo.wiki/b/b2/012di_da1.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_defeat",
+  "character": "gil",
+  "label": "无法战斗 1",
+  "ja": "雑種ごときに……！",
+  "zh": "居然被区区杂种给……！",
+  "url": "https://media.fgo.wiki/a/a2/012di_de1.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_defeat_saber",
+  "character": "gil",
+  "label": "对话 4",
+  "ja": "ふむ……手に入らぬからこそ、美しいものもある───ん？ 誰の事かだと？ 知るか。今のはただの戯言よ",
+  "zh": "……唔。有些东西正因为得不到才显得格外美丽。唔？　你问本王刚才说的是谁？谁知道啊。本王只是开了个玩笑！",
+  "url": "https://media.fgo.wiki/7/76/SV12_0_%E5%AF%B9%E8%AF%9D4.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "gil_victory",
+  "character": "gil",
+  "label": "胜利 1",
+  "ja": "慢心せずして何が王か！",
+  "zh": "不高傲无以为王！",
+  "url": "https://media.fgo.wiki/6/66/012di_btf1.mp3",
+  "page": "https://fgo.wiki/w/吉尔伽美什/语音"
+ },
+ {
+  "id": "saber_spawn",
+  "character": "saber",
+  "label": "召唤",
+  "ja": "問おう。貴方が私のマスターか？",
+  "zh": "试问。你是我的御主吗？",
+  "url": "https://media.fgo.wiki/0/02/002di_sum.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_salute",
+  "character": "saber",
+  "label": "开始 2",
+  "ja": "死力を尽くして来るがいい",
+  "zh": "拼尽所有实力放马过来吧。",
+  "url": "https://media.fgo.wiki/4/49/002di_btst2.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_full_power",
+  "character": "saber",
+  "label": "技能 2",
+  "ja": "全霊を見せる！",
+  "zh": "让你见识我的全力……！",
+  "url": "https://media.fgo.wiki/f/f2/SV2_0_%E6%8A%80%E8%83%BD2.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_strike_air",
+  "character": "saber",
+  "label": "Extra 2",
+  "ja": "風王鉄槌（ストライク・エア）！",
+  "zh": "风王铁锤！",
+  "url": "https://media.fgo.wiki/c/c6/SV2_0_Extra2.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_release_call",
+  "character": "saber",
+  "label": "技能 6",
+  "ja": "聖剣、解放",
+  "zh": "圣剑，解放——",
+  "url": "https://media.fgo.wiki/a/af/SV2_0_%E6%8A%80%E8%83%BD6.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_vs_gil",
+  "character": "saber",
+  "label": "宝具卡 1",
+  "ja": "ええ、決着をつけましょう―――",
+  "zh": "嗯，让我们分个胜负吧——",
+  "url": "https://media.fgo.wiki/c/c7/002di_npse.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_vs_sukuna",
+  "character": "saber",
+  "label": "技能 3",
+  "ja": "逃がしはしない！",
+  "zh": "决不放过……！",
+  "url": "https://media.fgo.wiki/8/80/SV2_0_%E6%8A%80%E8%83%BD3.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_avalon",
+  "character": "saber",
+  "label": "攻击 5",
+  "ja": "まだまだぁっ！",
+  "zh": "还差得远……！",
+  "url": "https://media.fgo.wiki/a/a6/SV2_0_%E6%94%BB%E5%87%BB5.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_last_stand",
+  "character": "saber",
+  "label": "技能 5",
+  "ja": "この道に勝利を！",
+  "zh": "为这条道路带来胜利！",
+  "url": "https://media.fgo.wiki/3/31/SV2_0_%E6%8A%80%E8%83%BD5.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_hurt",
+  "character": "saber",
+  "label": "受击 1",
+  "ja": "この程度で！",
+  "zh": "区区这种水平……！",
+  "url": "https://media.fgo.wiki/0/05/002di_da1.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_defeat",
+  "character": "saber",
+  "label": "无法战斗 1",
+  "ja": "こんな……ところで……",
+  "zh": "居然……在这种地方……",
+  "url": "https://media.fgo.wiki/5/55/002di_de1.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "saber_victory",
+  "character": "saber",
+  "label": "胜利 2",
+  "ja": "騎士の誓いは破れない。",
+  "zh": "不违背骑士的誓言。",
+  "url": "https://media.fgo.wiki/9/94/002di_btf2.mp3",
+  "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ }
+]

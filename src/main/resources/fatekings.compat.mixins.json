@@ -1,0 +1,18 @@
+{
+  "required": false,
+  "package": "cn.blockforge.fatekings.compat.mixin",
+  "plugin": "cn.blockforge.fatekings.compat.CompatMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "InfinityMixin",
+    "SorcererMixin",
+    "SkillCastMixin",
+    "DomainCastMixin",
+    "VoidCastMixin",
+    "MobilityMixin",
+    "JjkNpcMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

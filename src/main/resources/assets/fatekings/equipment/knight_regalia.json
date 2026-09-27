@@ -1,0 +1,14 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "fatekings:knight_regalia"
+      }
+    ],
+    "humanoid_leggings": [
+      {
+        "texture": "fatekings:knight_regalia"
+      }
+    ]
+  }
+}

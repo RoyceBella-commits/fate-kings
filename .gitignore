@@ -1,0 +1,8 @@
+build/
+run/
+.gradle/
+*.log
+.DS_Store
+logs/
+__pycache__/
+tools/.voice-cache/

@@ -1,0 +1,45 @@
+{
+  "model": {
+    "type": "minecraft:condition",
+    "property": "minecraft:using_item",
+    "on_true": {
+      "type": "minecraft:model",
+      "model": "fatekings:item/excalibur_release"
+    },
+    "on_false": {
+      "type": "minecraft:select",
+      "property": "minecraft:display_context",
+      "cases": [
+        {
+          "when": [
+            "fixed",
+            "ground",
+            "on_shelf"
+          ],
+          "model": {
+            "type": "minecraft:model",
+            "model": "fatekings:item/excalibur_revealed"
+          }
+        }
+      ],
+      "fallback": {
+        "type": "minecraft:select",
+        "property": "minecraft:custom_model_data",
+        "index": 0,
+        "cases": [
+          {
+            "when": "air",
+            "model": {
+              "type": "minecraft:model",
+              "model": "fatekings:item/excalibur_air"
+            }
+          }
+        ],
+        "fallback": {
+          "type": "minecraft:model",
+          "model": "fatekings:item/excalibur_revealed"
+        }
+      }
+    }
+  }
+}

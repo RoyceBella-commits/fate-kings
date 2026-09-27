@@ -1,0 +1,298 @@
+package cn.blockforge.fatekings.checks;
+
+import cn.blockforge.fatekings.combat.DamageRules;
+import cn.blockforge.fatekings.combat.JudgementRules;
+import cn.blockforge.fatekings.combat.JudgementRules.Outcome;
+import cn.blockforge.fatekings.combat.JudgementRules.Side;
+import cn.blockforge.fatekings.combat.JudgementRules.Weapon;
+import cn.blockforge.fatekings.king.KingRules;
+import cn.blockforge.fatekings.king.KingState;
+import cn.blockforge.fatekings.king.KingSync;
+import cn.blockforge.fatekings.king.Skills;
+import cn.blockforge.fatekings.npc.KingAiRules;
+import cn.blockforge.fatekings.voice.Voice;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+
+/**
+ * Headless checks of the pure rules and of resource completeness (run by {@code ./gradlew check}).
+ * Argument: the path of src/main/resources.
+ */
+public final class RulesCheck {
+    private static int passed;
+
+    private static void check(boolean ok, String label) {
+        if (!ok) throw new AssertionError("FAILED: " + label);
+        ++passed;
+    }
+
+    private static boolean near(double a, double b) {
+        return Math.abs(a - b) < 1.0E-4;
+    }
+
+    public static void main(String[] args) throws IOException {
+        Path res = Path.of(args[0]);
+        kings();
+        damage();
+        judgement();
+        ai();
+        state();
+        resources(res);
+        System.out.println("PASS: " + passed + " checks");
+    }
+
+    private static void kings() {
+        check(KingRules.kingOfSet(4, 0) == KingRules.HERO, "full golden set -> hero");
+        check(KingRules.kingOfSet(0, 4) == KingRules.KNIGHT, "full knight set -> knight");
+        check(KingRules.kingOfSet(3, 1) == KingRules.NONE, "mixed sets -> nobody");
+        check(KingRules.kingOfSet(3, 0) == KingRules.NONE, "incomplete golden set -> nobody");
+        check(KingRules.kingOfSet(2, 2) == KingRules.NONE, "two and two -> nobody");
+        check(KingRules.kingOfSet(0, 0) == KingRules.NONE, "nothing -> nobody");
+        check(!KingRules.mayEnter(KingRules.KNIGHT, KingRules.HERO, 1000, 999), "hero -> knight inside the 15 s lock is refused");
+        check(KingRules.mayEnter(KingRules.KNIGHT, KingRules.HERO, 1000, 1000), "hero -> knight once the lock ends");
+        check(KingRules.mayEnter(KingRules.HERO, KingRules.HERO, 1000, 10), "returning to the same king is never locked");
+        check(KingRules.mayEnter(KingRules.HERO, KingRules.NONE, 0, 0), "first time is free");
+        check(KingRules.SWAP_LOCK == 300, "swap lock is 15 s");
+        check(KingRules.MAX_HEALTH == 80.0f, "40 red hearts");
+        check(KingRules.GOLD_HP == 60.0f, "30 gold hearts");
+        check(KingRules.ARMOR == 30.0f && KingRules.TOUGHNESS == 20.0f, "armor 30 / toughness 20");
+        check(KingRules.UNARMED == 24.0f, "fists 24");
+        check(near(KingRules.HERO_SPEED, 0.2) && near(KingRules.KNIGHT_SPEED, 0.3), "speed +20% / +30%");
+        check(KingRules.volleyGates(0) == 0, "no volley on a tap");
+        check(KingRules.volleyGates(KingRules.GOB_VOLLEY_MIN) == 5, "a volley starts with 5 gates");
+        check(KingRules.volleyGates(KingRules.GOB_VOLLEY_FULL) == 100, "a volley grows to 100 gates");
+        check(KingRules.volleyGates(1000) == 100, "never more than 100 gates");
+        check(KingRules.volleyGates(40) > 5 && KingRules.volleyGates(40) < 100, "gates grow while held");
+        check(KingRules.GOB_VOLLEY == 60, "volley cooldown 3 s (was 8 s)");
+        check(KingRules.GOB_DAMAGE_MIN == 20.0f && KingRules.GOB_DAMAGE_MAX == 30.0f, "treasures hit for 20-30 (was 12-18)");
+        check(KingRules.DODGE_VANILLA == 0.5f && KingRules.DODGE_TREASURE == 0.35f, "Instinct: 50% / 35% (was 30% / 20%)");
+        check(KingRules.REVEALED == 200, "blade revealed 10 s after Strike Air");
+        check(KingRules.NPC_MAX_HEALTH == 200.0f && KingRules.MAX_HEALTH == 80.0f, "NPCs 200 health, players unchanged");
+        check(KingRules.NPC_GOLD_HP == 150.0f, "NPC gold scaled alike (150)");
+        check(near(KingRules.PLAYER_VS_NPC, 2.5), "players hit NPCs x2.5: same fight length as before");
+        check(near(KingRules.NPC_GOLD_HP / KingRules.PLAYER_VS_NPC, KingRules.GOLD_HP), "scaled gold matches the players' 30 hearts");
+        check(KingRules.KING_VS_JJK_DAMAGE == 2.0f, "king blows (NPC or player) on Gojo / Sukuna NPCs x2");
+        check(KingRules.waterRun(true, true, 0.0, false), "sprinting knight runs on water");
+        check(KingRules.waterRun(true, false, 0.02, false), "moving knight stays on water even after vanilla stops the sprint");
+        check(!KingRules.waterRun(true, false, 0.0, false), "a knight standing still sinks");
+        check(!KingRules.waterRun(false, true, 1.0, false), "only the knight");
+        check(KingRules.waterRun(true, false, 0.0, true), "the NPC knight too");
+        double[] ahead = KingRules.leapVelocity(new double[]{0, 0, 1}, null, true);
+        double[] up = KingRules.leapVelocity(new double[]{0, 0.8, 0.6}, null, true);
+        double[] back = KingRules.leapVelocity(new double[]{0, 0.8, 0.6}, new double[]{0, 0, -1}, true);
+        check(ahead[2] > 1.5 && ahead[1] > 0.5, "space alone: a long arc along the view");
+        check(up[1] > ahead[1] && up[2] < ahead[2] && up[1] <= KingRules.LEAP_MAX_LIFT + 1.0E-9, "looking up: a higher, shorter leap (capped)");
+        check(back[2] < -1.5 && Math.abs(back[1] - KingRules.LEAP_LIFT) < 1.0E-9, "S + space: backwards along the ground");
+        check(KingRules.leapVelocity(new double[]{0, 0, 1}, null, false)[1] < ahead[1], "the mid-air leap is lower");
+        check(KingRules.excaliburWidth(KingRules.EXCALIBUR_CHARGE) == 5.0f, "Excalibur 5 wide at 1.5 s");
+        check(KingRules.excaliburWidth(KingRules.EXCALIBUR_FULL) == 9.0f, "Excalibur 9 wide at 4 s");
+        check(KingRules.excaliburWidth(500) == 9.0f, "Excalibur width capped");
+        check(KingRules.eaWidth(KingRules.EA_CHARGE) == 4.0f, "Ea starts 4 wide");
+        check(KingRules.eaWidth(1000) == 10.0f, "Ea width capped");
+        check(KingRules.excaliburCooldown(false, false) == 1200, "player Excalibur 60 s");
+        check(KingRules.excaliburCooldown(true, false) == 1800, "NPC Excalibur 90 s");
+        check(KingRules.excaliburCooldown(true, true) == 900, "last stand Excalibur 45 s");
+        check(KingRules.BAB_ILU == 1800, "Bab-ilu 90 s");
+        check(KingRules.EA_NPC == 3600, "NPC Ea 180 s");
+        check(KingRules.excaliburSwing(false, false) == 30.0f, "Invisible Air swing 30");
+        check(KingRules.excaliburSwing(true, false) == 39.0f, "revealed swing +30%");
+        check(KingRules.excaliburSwing(false, true) == 39.0f, "last stand swing revealed");
+        check(KingRules.avalonRegen(0) == 1.0f, "Avalon 0.5 hearts/s in combat");
+        check(KingRules.avalonRegen(100) == 4.0f, "Avalon 2 hearts/s after 5 s out of combat");
+        float[] split = KingRules.splitDamage(10.0f, 4.0f);
+        check(split[0] == 4.0f && split[1] == 0.0f, "gold takes a small hit entirely");
+        split = KingRules.splitDamage(3.0f, 10.0f);
+        check(split[0] == 3.0f && split[1] == 7.0f, "gold takes what it can, red takes the rest");
+        split = KingRules.splitDamage(0.0f, 5.0f);
+        check(split[0] == 0.0f && split[1] == 5.0f, "no gold: all red");
+        check(KingRules.ultimateOnCharacter(0.0f) == 90.0f && KingRules.ultimateOnCharacter(1.0f) == 100.0f, "90-100 on characters");
+        check(KingRules.TREASURY_REORG == 160 && KingRules.MANA_DEPLETION == 100, "reorg 8 s, depletion 5 s");
+        check(KingRules.MANA_DEPLETION < KingRules.TREASURY_REORG, "depletion 3 s shorter than reorg");
+        check(KingRules.EXCALIBUR < KingRules.BAB_ILU, "Excalibur cools faster than the key");
+    }
+
+    private static void damage() {
+        check(near(DamageRules.kingTaken(false), 0.01), "vanilla hits: 1%");
+        check(near(DamageRules.kingTaken(true), 0.10), "mod characters: 10%");
+        check(near(DamageRules.jjkTaken(5, false), 0.01), "stage V sorcerer: 1%");
+        check(near(DamageRules.jjkTaken(5, true), 0.10), "stage V between sorcerers: 10%");
+        check(near(DamageRules.jjkTaken(0, false), 1.0), "unawakened: all");
+        // A stage V sorcerer wearing the set: the other mod multiplies too; together it must be the lower share.
+        check(near(DamageRules.kingTakenWithJjk(false, 5, false) * DamageRules.jjkTaken(5, false), 0.01), "both mods: still 1%");
+        check(near(DamageRules.kingTakenWithJjk(true, 5, true) * DamageRules.jjkTaken(5, true), 0.10), "both mods: still 10%");
+        check(near(DamageRules.kingTakenWithJjk(false, 2, false) * DamageRules.jjkTaken(2, false), 0.01), "stage II + king: the king's 1% wins");
+        check(near(DamageRules.kingTakenWithJjk(true, 1, true) * DamageRules.jjkTaken(1, true), 0.10), "stage I + king vs sorcerer: 10%");
+        check(DamageRules.kingTakenWithJjk(false, 5, false) <= 1.0f, "never amplifies");
+        check(DamageRules.crippledHealth(80.0f) == 2.0f, "Excalibur leaves Gojo at one heart");
+        check(DamageRules.crippledHealth(1.0f) == 1.0f, "below one heart stays unchanged");
+        check(DamageRules.crippledHealth(2.0f) == 2.0f, "exactly one heart stays");
+        check(DamageRules.crippledHealth(0.5f) > 0.0f, "Excalibur itself never kills Gojo");
+        check(DamageRules.kingGoldTarget(60.0f) == 0.0f, "stage V sorcerer gold already 30 hearts: no extra");
+        check(DamageRules.kingGoldTarget(30.0f) == 30.0f, "stage II: top up to 30 hearts");
+        check(DamageRules.kingGoldTarget(0.0f) == 60.0f, "no other gold: 30 hearts");
+        check(DamageRules.topUp(20.0, 30.0) == 10.0, "armor 20 -> +10");
+        check(DamageRules.topUp(35.0, 30.0) == 0.0, "never stacks above");
+    }
+
+    private static void judgement() {
+        for (Side s : new Side[]{Side.VANILLA, Side.PLAYER}) {
+            check(JudgementRules.outcome(Weapon.EXCALIBUR, s, true) == Outcome.INSTANT_DEATH, "Excalibur kills " + s);
+        }
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.VANILLA_BOSS, true) == Outcome.INSTANT_DEATH, "Excalibur kills bosses");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.VANILLA_BOSS, false) == Outcome.HEAVY_DAMAGE, "boss rule off: heavy damage");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.MAHORAGA, true) == Outcome.WHEEL_CANNOT_TURN, "Excalibur kills Mahoraga");
+        check(JudgementRules.outcome(Weapon.EA, Side.MAHORAGA, true) == Outcome.WHEEL_CANNOT_TURN, "Ea kills Mahoraga");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.GOJO, true) == Outcome.CRIPPLE, "Excalibur cripples Gojo");
+        check(JudgementRules.outcome(Weapon.EA, Side.GOJO, true) == Outcome.CHARACTER_DAMAGE, "Ea hurts Gojo normally (through Infinity)");
+        for (Side s : new Side[]{Side.SUKUNA, Side.HERO, Side.KNIGHT}) {
+            check(JudgementRules.outcome(Weapon.EXCALIBUR, s, true) == Outcome.CHARACTER_DAMAGE, "Excalibur on " + s + ": 90-100");
+            check(JudgementRules.outcome(Weapon.EA, s, true) == Outcome.CHARACTER_DAMAGE, "Ea on " + s + ": 90-100");
+        }
+        check(JudgementRules.outcome(Weapon.EA, Side.VANILLA, true) == Outcome.HEAVY_DAMAGE, "Ea on mobs: 4000");
+        check(JudgementRules.outcome(Weapon.EA, Side.PLAYER, true) == Outcome.CHARACTER_DAMAGE, "Ea on a player: 90-100");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.OTHER_MOD, true) == Outcome.HEAVY_DAMAGE, "other mods' creatures: heavy damage, no instakill");
+        check(JudgementRules.piercesInfinity(Weapon.EA) && JudgementRules.piercesInfinity(Weapon.EXCALIBUR), "both pierce Infinity");
+        check(JudgementRules.worthy(Side.HERO, false) && JudgementRules.worthy(Side.KNIGHT, false), "kings are worthy");
+        check(JudgementRules.worthy(Side.MAHORAGA, false) && JudgementRules.worthy(Side.VANILLA_BOSS, false), "Mahoraga and bosses are worthy");
+        check(JudgementRules.worthy(Side.GOJO, true) && !JudgementRules.worthy(Side.GOJO, false), "sorcerers worthy at stage V only");
+        check(!JudgementRules.worthy(Side.VANILLA, true) && !JudgementRules.worthy(Side.PLAYER, true), "mobs and plain players are not worthy");
+    }
+
+    private static void ai() {
+        int t = KingAiRules.ARROGANT;
+        check(KingAiRules.gilTierAfterHit(t, 5, false, false, 0.99f, true, false) == KingAiRules.ARROGANT, "a scratch keeps him arrogant");
+        check(KingAiRules.gilTierAfterHit(t, 45, false, false, 0.9f, true, false) == KingAiRules.DISPLEASED, "40 damage: displeased");
+        check(KingAiRules.gilTierAfterHit(t, 1, true, false, 0.99f, true, false) == KingAiRules.DISPLEASED, "hit by the unworthy: displeased");
+        check(KingAiRules.gilTierAfterHit(t, 1, false, true, 0.99f, true, false) == KingAiRules.SERIOUS, "a worthy foe struck first: serious");
+        check(KingAiRules.gilTierAfterHit(t, 1, false, false, 0.4f, true, false) == KingAiRules.SERIOUS, "below half: serious");
+        check(KingAiRules.gilTierAfterHit(t, 100, true, false, 0.3f, false, false) == KingAiRules.DISPLEASED, "ordinary mobs: at most displeased");
+        check(KingAiRules.gilTierAfterHit(t, 1, false, false, 0.99f, false, true) == KingAiRules.SERIOUS, "Saber: serious at once");
+        check(!KingAiRules.gilWantsEa(KingAiRules.ARROGANT, true, 0.2f, 0, false, false, true, 0, false, false), "no Ea while arrogant");
+        check(!KingAiRules.gilWantsEa(KingAiRules.SERIOUS, false, 0.1f, 999, true, true, true, 0, false, false), "never Ea on the unworthy");
+        check(KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.3f, 0, false, false, true, 0, false, false), "serious + worthy + below a third: Ea");
+        check(!KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.5f, 0, false, false, true, 0, false, false), "serious + worthy but no reason: no Ea");
+        check(KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.9f, 200, false, false, true, 0, false, false), "stopped by Infinity 10 s: Ea");
+        check(!KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.9f, 199, false, false, true, 0, false, false), "less than 10 s: not yet");
+        check(KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.9f, 0, true, false, true, 0, false, false), "Mahoraga adapted: Ea");
+        check(KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.9f, 0, false, true, true, 0, false, false), "enemy domain: Ea");
+        check(!KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.1f, 0, false, false, false, 0, false, false), "Ea on cooldown");
+        check(!KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.1f, 0, false, false, true, 2, false, false), "at most twice per fight");
+        check(KingAiRules.gilWantsEa(KingAiRules.ARROGANT, true, 0.45f, 0, false, false, true, 0, true, false), "vs Saber: below half is enough");
+        check(KingAiRules.gilWantsEa(KingAiRules.ARROGANT, true, 0.9f, 0, false, false, true, 0, true, true), "vs Saber: hit by Excalibur is enough");
+        check(!KingAiRules.gilWantsEa(KingAiRules.SERIOUS, true, 0.1f, 0, false, false, true, 2, true, true), "vs Saber: still twice at most");
+        check(KingAiRules.gilGates(KingAiRules.ARROGANT, 0.0f) == 1 && KingAiRules.gilGates(KingAiRules.ARROGANT, 1.0f) == 3, "arrogant: 1-3 treasures");
+        check(KingAiRules.gilGates(KingAiRules.DISPLEASED, 0.0f) == 8 && KingAiRules.gilGates(KingAiRules.DISPLEASED, 1.0f) == 15, "displeased: 8-15");
+        check(KingAiRules.gilGates(KingAiRules.SERIOUS, 0.0f) == 30 && KingAiRules.gilGates(KingAiRules.SERIOUS, 1.0f) == 60, "serious: 30-60");
+        check(KingAiRules.saberTier(1.0f, false) == KingAiRules.COURTESY, "courtesy by default");
+        check(KingAiRules.saberTier(1.0f, true) == KingAiRules.FULL_POWER, "strong foe: full power");
+        check(KingAiRules.saberTier(0.6f, false) == KingAiRules.FULL_POWER, "below 70%: full power");
+        check(KingAiRules.saberTier(0.2f, true) == KingAiRules.LAST_STAND, "below 25%: last stand");
+        check(!KingAiRules.saberWantsExcalibur(true, true, true, 999, true, true, 0.1f, 20, true, true), "never on neutral animals");
+        check(!KingAiRules.saberWantsExcalibur(false, false, true, 999, true, true, 0.1f, 20, false, false), "not on cooldown");
+        check(KingAiRules.saberWantsExcalibur(true, false, false, 0, false, true, 1.0f, 0, false, false), "bosses: at first sight");
+        check(KingAiRules.saberWantsExcalibur(true, false, true, 161, false, false, 1.0f, 0, false, false), "strong foe after 8 s");
+        check(!KingAiRules.saberWantsExcalibur(true, false, true, 100, false, false, 1.0f, 0, false, false), "strong foe before 8 s: not yet");
+        check(KingAiRules.saberWantsExcalibur(true, false, false, 0, true, false, 1.0f, 0, false, false), "foe's ultimate: answer at once");
+        check(KingAiRules.saberWantsExcalibur(true, false, false, 0, false, false, 0.45f, 0, false, false), "below half health");
+        check(KingAiRules.saberWantsExcalibur(true, false, false, 0, false, false, 1.0f, 8, false, false), "8 hostiles around");
+        check(!KingAiRules.saberWantsExcalibur(true, false, false, 0, false, false, 1.0f, 7, false, false), "7 hostiles: not yet");
+        check(KingAiRules.saberWantsExcalibur(true, false, false, 0, false, false, 1.0f, 0, true, false), "Avalon's counter");
+        check(KingAiRules.clash(true) == KingAiRules.ClashResult.AVALON_BLOCKS, "Avalon ready: blocks Ea");
+        check(KingAiRules.clash(false) == KingAiRules.ClashResult.EA_OVERPOWERS, "Avalon cooling: Ea overpowers");
+        double[] east = {1, 0, 0}, west = {-1, 0, 0}, north = {0, 0, -1};
+        check(KingAiRules.beamsMeet(east, west, 0.0, 2.0, 2.5, 20), "head-on beams meet");
+        check(!KingAiRules.beamsMeet(east, east, 0.0, 2.0, 2.5, 20), "same direction: no clash");
+        check(!KingAiRules.beamsMeet(east, west, 10.0, 2.0, 2.5, 20), "passing far apart: no clash");
+        check(!KingAiRules.beamsMeet(east, west, 0.0, 2.0, 2.5, 61), "more than 3 s apart: no clash");
+        check(!KingAiRules.beamsMeet(east, north, 0.0, 2.0, 2.5, 0), "at right angles: no clash");
+    }
+
+    private static void state() {
+        KingState s = KingState.fresh();
+        s.king = KingRules.KNIGHT;
+        s.lockedFrom = KingRules.HERO;
+        s.lockUntil = 1234L;
+        s.gold = 42.0f;
+        s.cooldown(Skills.EXCALIBUR, 100L, 1200);
+        s.revealedUntil = 77L;
+        s.flightGranted = true;
+        var json = KingState.CODEC.encodeStart(JsonOps.INSTANCE, s).getOrThrow();
+        KingState back = KingState.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
+        check(back.king == KingRules.KNIGHT && back.lockedFrom == KingRules.HERO && back.lockUntil == 1234L, "state round trip: king and lock");
+        check(back.gold == 42.0f && back.cooldownEnd(Skills.EXCALIBUR) == 1300L, "state round trip: gold and cooldowns");
+        check(back.revealedUntil == 77L && back.flightGranted, "state round trip: windows and flight");
+        KingState old = KingState.CODEC.parse(JsonOps.INSTANCE, new JsonObject()).getOrThrow();
+        check(old.king == KingRules.NONE && old.gold < 0.0f, "empty save loads as a fresh state");
+        check(back.ready(Skills.EXCALIBUR, 1300L) && !back.ready(Skills.EXCALIBUR, 1299L), "cooldown boundaries");
+        check(back.cooldownLeft(Skills.EXCALIBUR, 1000L) == 300, "cooldown left");
+        check(back.cooldownLeft(Skills.EXCALIBUR, 5000L) == 0, "cooldown never negative");
+        Set<String> keys = new HashSet<>(Set.of(KingSync.KEYS));
+        for (String k : Skills.HERO_HUD) check(keys.contains(k), "HUD key synced: " + k);
+        for (String k : Skills.KNIGHT_HUD) check(keys.contains(k), "HUD key synced: " + k);
+    }
+
+    private static JsonObject json(Path p) throws IOException {
+        return JsonParser.parseString(Files.readString(p, StandardCharsets.UTF_8)).getAsJsonObject();
+    }
+
+    private static void resources(Path res) throws IOException {
+        Path a = res.resolve("assets/fatekings");
+        JsonObject zh = json(a.resolve("lang/zh_cn.json"));
+        JsonObject en = json(a.resolve("lang/en_us.json"));
+        check(zh.keySet().equals(en.keySet()), "zh_cn and en_us have the same keys");
+        String[] items = {"golden_crown", "golden_chestplate", "golden_greaves", "golden_sabatons", "gate_of_babylon", "bab_ilu", "ea",
+            "enkidu", "vimana", "treasury_elixir", "knight_ribbon", "knight_breastplate", "knight_skirt", "knight_boots", "excalibur",
+            "warhorse", "knight_barding", "gilgamesh_spawn_egg", "artoria_spawn_egg", "grail_mud"};
+        for (String id : items) {
+            check(Files.exists(a.resolve("items/" + id + ".json")), "item model definition: " + id);
+            check(zh.has("item.fatekings." + id), "item name: " + id);
+        }
+        for (String tex : new String[]{"excalibur_air", "excalibur_revealed", "excalibur_release", "ea", "ea_charging"}) {
+            check(Files.exists(a.resolve("textures/item/" + tex + ".png")), "texture: " + tex);
+            check(Files.exists(a.resolve("models/item/" + tex + ".json")), "model: " + tex);
+        }
+        check(Files.exists(a.resolve("textures/item/excalibur_air.png.mcmeta")), "Invisible Air is animated");
+        check(Files.exists(a.resolve("textures/item/excalibur_release.png.mcmeta")), "the true name glow is animated");
+        String excal = Files.readString(a.resolve("items/excalibur.json"));
+        check(excal.contains("using_item") && excal.contains("\"air\"") && excal.contains("excalibur_revealed"), "Excalibur switches three states");
+        for (String eq : new String[]{"golden_regalia", "knight_regalia"}) {
+            check(Files.exists(a.resolve("equipment/" + eq + ".json")), "equipment asset: " + eq);
+            check(Files.exists(a.resolve("textures/entity/equipment/humanoid/" + eq + ".png")), "armor layer: " + eq);
+            check(Files.exists(a.resolve("textures/entity/equipment/humanoid_leggings/" + eq + ".png")), "leggings layer: " + eq);
+        }
+        check(Files.exists(a.resolve("textures/entity/equipment/horse_body/knight_barding.png")), "horse barding layer");
+        check(Files.exists(a.resolve("textures/entity/gilgamesh.png")) && Files.exists(a.resolve("textures/entity/artoria.png")), "NPC skins");
+        JsonObject sounds = json(a.resolve("sounds.json"));
+        for (Voice v : Voice.values()) {
+            check(zh.has(v.key()) && en.has(v.key()), "subtitle for " + v);
+            if (v.clip == null) continue;
+            check(sounds.has("voice." + v.clip), "sounds.json entry for " + v.clip);
+            check(Files.exists(a.resolve("sounds/voice/" + v.clip + ".ogg")), "voice file " + v.clip + ".ogg");
+            check(v.seconds > 0.5f && v.seconds < 8.0f, "sane duration " + v.clip);
+        }
+        for (String dmg : new String[]{"enuma_elish", "excalibur", "excalibur_judgement", "heavens_chain", "mana_burst", "sword_qi"}) {
+            check(Files.exists(res.resolve("data/fatekings/damage_type/" + dmg + ".json")), "damage type " + dmg);
+            check(zh.has("death.attack.fatekings." + dmg) && zh.has("death.attack.fatekings." + dmg + ".player"), "death messages " + dmg);
+        }
+        String inv = Files.readString(res.resolve("data/minecraft/tags/damage_type/bypasses_invulnerability.json"));
+        check(inv.contains("excalibur_judgement") && !inv.contains("\"fatekings:excalibur\"") && !inv.contains("enuma_elish"),
+            "only the judgement type ignores invulnerability (the character types keep each side's share)");
+        for (String k : Skills.HERO_HUD) check(zh.has("fatekings.skill." + k), "skill name " + k);
+        for (String k : Skills.KNIGHT_HUD) check(zh.has("fatekings.skill." + k), "skill name " + k);
+        for (JudgementRules.Side s : JudgementRules.Side.values()) check(zh.has("fatekings.side." + s.name().toLowerCase(Locale.ROOT)), "side name " + s);
+        JsonObject mod = json(res.resolve("fabric.mod.json"));
+        check("fatekings".equals(mod.get("id").getAsString()), "mod id");
+        check(mod.getAsJsonObject("suggests").has("sukuna"), "the Gojo x Sukuna mod is optional");
+        check(!mod.getAsJsonObject("depends").has("sukuna"), "no hard dependency on it");
+        JsonObject compat = json(res.resolve("fatekings.compat.mixins.json"));
+        check(!compat.get("required").getAsBoolean() && compat.has("plugin"), "compat mixins are optional and gated");
+    }
+}
