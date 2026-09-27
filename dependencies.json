@@ -7,7 +7,7 @@
   "fabric_loom": "1.17.21",
   "gradle": "9.6.0",
   "mod_id": "fatekings",
-  "mod_version": "1.0.1+mc26.3",
+  "mod_version": "1.0.2+mc26.3",
   "optional_compat": "sukuna (jjk-gojo-sukuna 2.2.2 - 2.2.4 +mc26.3)",
-  "status": "build + 391 rule checks + 19 server game tests passed (with sukuna 2.2.4 loaded); gameplay acceptance by the user"
+  "status": "build + 411 rule checks + 23 server game tests passed (with sukuna 2.2.4 loaded); gameplay acceptance by the user"
 }

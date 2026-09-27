@@ -14,6 +14,10 @@ public final class FateDamage {
     public static final ResourceKey<DamageType> ENUMA_ELISH = key("enuma_elish");
     /** Excalibur on characters: pierces Infinity, still subject to each side's taken share. */
     public static final ResourceKey<DamageType> EXCALIBUR = key("excalibur");
+    /** Ea on creatures (1000): the same death message as {@link #ENUMA_ELISH}, but armour applies. */
+    public static final ResourceKey<DamageType> ENUMA_ELISH_MOB = key("enuma_elish_mob");
+    /** Excalibur on other mods' creatures (1000): the same death message as {@link #EXCALIBUR}, but armour applies. */
+    public static final ResourceKey<DamageType> EXCALIBUR_MOB = key("excalibur_mob");
     /** Excalibur on vanilla creatures: bypasses invulnerability, armour, resistance and shields. */
     public static final ResourceKey<DamageType> JUDGEMENT = key("excalibur_judgement");
     /** Heaven's Chain tightening around a being of higher standing. */

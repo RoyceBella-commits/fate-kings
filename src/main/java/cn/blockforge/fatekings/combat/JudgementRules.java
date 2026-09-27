@@ -32,29 +32,34 @@ public final class JudgementRules {
         WHEEL_CANNOT_TURN,
         /** Gojo: Infinity pierced, left at one heart, never killed by the blast itself. */
         CRIPPLE,
-        /** 4000 (Ea) / 1000 damage to a creature. */
+        /** 1000 damage to a creature; armour applies. */
         HEAVY_DAMAGE,
-        /** 90-100, then the target's own taken share (10% for a king or a stage V sorcerer). */
+        /** A Gojo / Sukuna / king NPC: 190 health off after every share; armour and gold hearts ignored. */
+        NPC_BLOW,
+        /** A player: 90-100, then the target's own taken share (10% for a king or a stage V sorcerer). */
         CHARACTER_DAMAGE
     }
 
     private JudgementRules() {
     }
 
-    public static Outcome outcome(Weapon weapon, Side side, boolean bossInstakill) {
+    /** @param npc whether the target is not a player (for the character sides: one of the four NPCs) */
+    public static Outcome outcome(Weapon weapon, Side side, boolean npc, boolean bossInstakill) {
         if (side == Side.MAHORAGA) return Outcome.WHEEL_CANNOT_TURN;
+        Outcome character = npc ? Outcome.NPC_BLOW : Outcome.CHARACTER_DAMAGE;
         if (weapon == Weapon.EXCALIBUR) {
             return switch (side) {
                 case VANILLA, PLAYER -> Outcome.INSTANT_DEATH;
                 case VANILLA_BOSS -> bossInstakill ? Outcome.INSTANT_DEATH : Outcome.HEAVY_DAMAGE;
                 case GOJO -> Outcome.CRIPPLE;
                 case OTHER_MOD -> Outcome.HEAVY_DAMAGE;
-                default -> Outcome.CHARACTER_DAMAGE;
+                default -> character;
             };
         }
         return switch (side) {
             case VANILLA, VANILLA_BOSS, OTHER_MOD -> Outcome.HEAVY_DAMAGE;
-            default -> Outcome.CHARACTER_DAMAGE;
+            case PLAYER -> Outcome.CHARACTER_DAMAGE;
+            default -> character;
         };
     }
 

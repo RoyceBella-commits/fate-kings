@@ -37,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public abstract class KingNpcEntity extends PathfinderMob {
     protected KingState kingState = KingState.fresh();
+    private boolean goldPierced;
     protected int combatTicks;
     protected float takenThisFight;
     protected LivingEntity lastFoe;
@@ -152,11 +153,20 @@ public abstract class KingNpcEntity extends PathfinderMob {
         return this.combatTicks > 0;
     }
 
+    /** Set around one blow that goes past the gold hearts straight to health (Ea / Excalibur on an NPC). */
+    public void pierceGold(boolean on) {
+        this.goldPierced = on;
+    }
+
     @Override
     protected void actuallyHurt(ServerLevel level, DamageSource source, float amount) {
         // Gold hearts first (as for players).
         this.kingState.lastHurt = level.getGameTime();
         this.kingState.lastCombat = this.kingState.lastHurt;
+        if (this.goldPierced) {
+            super.actuallyHurt(level, source, amount);
+            return;
+        }
         float[] split = KingRules.splitDamage(this.kingState.gold, amount);
         this.kingState.gold -= split[0];
         if (split[1] > 0.0f) super.actuallyHurt(level, source, split[1]);

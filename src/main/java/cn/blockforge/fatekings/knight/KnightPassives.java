@@ -3,6 +3,7 @@ package cn.blockforge.fatekings.knight;
 import cn.blockforge.fatekings.combat.Fx;
 import cn.blockforge.fatekings.king.KingRules;
 import cn.blockforge.fatekings.king.KingState;
+import cn.blockforge.fatekings.npc.KingNpcEntity;
 import cn.blockforge.fatekings.registry.FateEffects;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,9 +32,10 @@ public final class KnightPassives {
 
     public static void tick(LivingEntity e, KingState s, long now) {
         if (!(e.level() instanceof ServerLevel level) || !e.isAlive()) return;
+        float scale = KingRules.healScale(e instanceof KingNpcEntity);
         // Layer one: constant regeneration (paused by mana depletion and by another knight's Excalibur).
         if (now % 20 == 0 && now >= s.regenPausedUntil && !s.depleted(now) && e.getHealth() < e.getMaxHealth()) {
-            e.heal(KingRules.avalonRegen(now - s.lastCombat));
+            e.heal(KingRules.avalonRegen(now - s.lastCombat) * scale);
             if (now % 40 == 0) {
                 Fx.particles(level, Fx.dust(0xFFE38A, 0.7f), e.getX(), e.getY() + 1.0, e.getZ(), 3, 0.4, 0.5, 0.4, 0.0);
                 Fx.particles(level, Fx.dust(0x7FB2FF, 0.7f), e.getX(), e.getY() + 1.0, e.getZ(), 2, 0.4, 0.5, 0.4, 0.0);
@@ -41,7 +43,7 @@ public final class KnightPassives {
         }
         // Layer two's afterglow: 20 hearts over 5 s after a lethal wound was refused.
         if (now < s.healUntil) {
-            e.heal(40.0f / KingRules.LETHAL_HEAL);
+            e.heal(40.0f / KingRules.LETHAL_HEAL * scale);
         }
         if (now % 60 == 0) cleanse(e, false);
         if (s.domeActive(now)) {

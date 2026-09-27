@@ -71,6 +71,9 @@ def sounds():
 DAMAGE = {
     "enuma_elish": {"message_id": f"{NS}.enuma_elish", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
     "excalibur": {"message_id": f"{NS}.excalibur", "scaling": "never", "exhaustion": 0.0, "effects": "burning"},
+    # On creatures (1000): same death messages, but not in bypasses_armor.
+    "enuma_elish_mob": {"message_id": f"{NS}.enuma_elish", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
+    "excalibur_mob": {"message_id": f"{NS}.excalibur", "scaling": "never", "exhaustion": 0.0, "effects": "burning"},
     "excalibur_judgement": {"message_id": f"{NS}.excalibur_judgement", "scaling": "never", "exhaustion": 0.0, "effects": "burning"},
     "heavens_chain": {"message_id": f"{NS}.heavens_chain", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
     "mana_burst": {"message_id": f"{NS}.mana_burst", "scaling": "never", "exhaustion": 0.1, "effects": "hurt"},

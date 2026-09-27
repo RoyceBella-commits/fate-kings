@@ -35,8 +35,9 @@ import net.minecraft.world.entity.player.Player;
 
 /**
  * Applies Enuma Elish / Excalibur to one target according to {@link JudgementRules}: instant death
- * for vanilla creatures, Mahoraga's wheel that cannot turn, Gojo left at one heart, 90-100 on the
- * other characters.
+ * for vanilla creatures (Excalibur), Mahoraga's wheel that cannot turn, Gojo left at one heart
+ * (Excalibur), exactly 190 health off the Gojo / Sukuna / king NPCs, 1000 on other creatures and
+ * 90-100 on players.
  */
 public final class Judgement {
     /** Gojo crippled by a knight: that knight cannot kill him for 12 s (her chivalry). */
@@ -76,29 +77,53 @@ public final class Judgement {
             return false;
         }
         Side side = Sides.side(target);
-        Outcome outcome = JudgementRules.outcome(weapon, side, FateRules.get(level, FateRules.EXCALIBUR_BOSS_INSTAKILL));
+        Outcome outcome = JudgementRules.outcome(weapon, side, !(target instanceof Player), FateRules.get(level, FateRules.EXCALIBUR_BOSS_INSTAKILL));
         return switch (outcome) {
             case WHEEL_CANNOT_TURN -> killMahoraga(level, caster, carrier, target, weapon);
             case INSTANT_DEATH -> instantDeath(level, caster, carrier, target);
             case CRIPPLE -> cripple(level, caster, target);
-            case HEAVY_DAMAGE -> hurt(level, caster, carrier, target, weapon, weapon == Weapon.EA ? KingRules.EA_MOB_DAMAGE : KingRules.OTHER_MOD_MOB_DAMAGE);
+            case HEAVY_DAMAGE -> hurt(level, target, FateDamage.source(level, weapon == Weapon.EA ? FateDamage.ENUMA_ELISH_MOB : FateDamage.EXCALIBUR_MOB, carrier, caster), KingRules.MOB_DAMAGE);
+            case NPC_BLOW -> woundAvalon(level, target, weapon, side, npcBlow(level, target, characterSource(level, carrier, caster, weapon), KingRules.NPC_PHANTASM_LOSS * multiplier));
             case CHARACTER_DAMAGE -> {
                 float amount = KingRules.ultimateOnCharacter(level.getRandom().nextFloat()) * multiplier;
-                boolean hit = hurt(level, caster, carrier, target, weapon, amount);
-                if (hit && weapon == Weapon.EXCALIBUR && side == Side.KNIGHT) {
-                    // Avalon does not heal wounds dealt by Excalibur.
-                    KingState s = Kings.of(target);
-                    if (s != null) s.regenPausedUntil = level.getGameTime() + KingRules.AVALON_REGEN_PAUSE;
-                }
-                yield hit;
+                yield woundAvalon(level, target, weapon, side, hurt(level, target, characterSource(level, carrier, caster, weapon), amount));
             }
         };
     }
 
-    private static boolean hurt(ServerLevel level, LivingEntity caster, Entity carrier, LivingEntity target, Weapon weapon, float amount) {
+    /** Pierces Infinity and armour; each side's share still applies. */
+    private static DamageSource characterSource(ServerLevel level, Entity carrier, LivingEntity caster, Weapon weapon) {
+        return FateDamage.source(level, weapon == Weapon.EA ? FateDamage.ENUMA_ELISH : FateDamage.EXCALIBUR, carrier, caster);
+    }
+
+    private static boolean hurt(ServerLevel level, LivingEntity target, DamageSource source, float amount) {
         target.setInvulnerableTime(0);
-        DamageSource source = FateDamage.source(level, weapon == Weapon.EA ? FateDamage.ENUMA_ELISH : FateDamage.EXCALIBUR, carrier, caster);
         return target.hurtServer(level, source, amount);
+    }
+
+    /**
+     * Exactly {@code loss} health off an NPC once every share has been applied (this mod's and the
+     * Gojo x Sukuna mod's): the blow is sized by their product. Armour is pierced by the damage type,
+     * gold hearts are passed by for this one blow. Avalon, Infinity and the like still have their say.
+     */
+    private static boolean npcBlow(ServerLevel level, LivingEntity target, DamageSource source, float loss) {
+        float scale = DamageShare.apply(target, source, 1.0f) * JjkCompat.takenScale(target, source);
+        KingNpcEntity king = target instanceof KingNpcEntity k ? k : null;
+        if (king != null) king.pierceGold(true);
+        try {
+            return hurt(level, target, source, KingRules.rawForLoss(loss, scale));
+        } finally {
+            if (king != null) king.pierceGold(false);
+        }
+    }
+
+    /** Avalon does not heal wounds dealt by Excalibur. */
+    private static boolean woundAvalon(ServerLevel level, LivingEntity target, Weapon weapon, Side side, boolean hit) {
+        if (hit && weapon == Weapon.EXCALIBUR && side == Side.KNIGHT) {
+            KingState s = Kings.of(target);
+            if (s != null) s.regenPausedUntil = level.getGameTime() + KingRules.AVALON_REGEN_PAUSE;
+        }
+        return hit;
     }
 
     private static boolean instantDeath(ServerLevel level, LivingEntity caster, Entity carrier, LivingEntity target) {

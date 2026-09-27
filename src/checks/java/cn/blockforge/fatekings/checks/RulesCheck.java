@@ -107,13 +107,20 @@ public final class RulesCheck {
         check(KingRules.excaliburSwing(false, true) == 39.0f, "last stand swing revealed");
         check(KingRules.avalonRegen(0) == 1.0f, "Avalon 0.5 hearts/s in combat");
         check(KingRules.avalonRegen(100) == 4.0f, "Avalon 2 hearts/s after 5 s out of combat");
+        check(KingRules.healScale(false) == 1.0f && KingRules.healScale(true) == 2.5f, "NPC heals x2.5 (200-health pool)");
+        check(near(KingRules.healScale(true) / KingRules.NPC_MAX_HEALTH, 1.0 / KingRules.MAX_HEALTH), "an NPC recovers the same share per second as a player");
         float[] split = KingRules.splitDamage(10.0f, 4.0f);
         check(split[0] == 4.0f && split[1] == 0.0f, "gold takes a small hit entirely");
         split = KingRules.splitDamage(3.0f, 10.0f);
         check(split[0] == 3.0f && split[1] == 7.0f, "gold takes what it can, red takes the rest");
         split = KingRules.splitDamage(0.0f, 5.0f);
         check(split[0] == 0.0f && split[1] == 5.0f, "no gold: all red");
-        check(KingRules.ultimateOnCharacter(0.0f) == 90.0f && KingRules.ultimateOnCharacter(1.0f) == 100.0f, "90-100 on characters");
+        check(KingRules.ultimateOnCharacter(0.0f) == 90.0f && KingRules.ultimateOnCharacter(1.0f) == 100.0f, "90-100 on players");
+        check(KingRules.MOB_DAMAGE == 1000.0f, "Ea / Excalibur on creatures: 1000");
+        check(KingRules.NPC_PHANTASM_LOSS == 190.0f && KingRules.NPC_PHANTASM_LOSS < KingRules.NPC_MAX_HEALTH, "190 off an NPC: one blow leaves 10");
+        check(near(KingRules.rawForLoss(190.0f, 0.1f), 1900.0) && near(KingRules.rawForLoss(190.0f, 0.25f), 760.0), "king NPC: 10% (x2.5 from a player)");
+        check(near(KingRules.rawForLoss(190.0f, 0.5f), 380.0) && near(KingRules.rawForLoss(190.0f, 0.5f) * 0.5, 190.0), "Gojo / Sukuna NPC: 2 x 2.5 x 10% = 50%");
+        check(KingRules.rawForLoss(190.0f, 0.0f) == 190.0f && KingRules.rawForLoss(190.0f, Float.NaN) == 190.0f, "no usable share: the loss as is");
         check(KingRules.TREASURY_REORG == 160 && KingRules.MANA_DEPLETION == 100, "reorg 8 s, depletion 5 s");
         check(KingRules.MANA_DEPLETION < KingRules.TREASURY_REORG, "depletion 3 s shorter than reorg");
         check(KingRules.EXCALIBUR < KingRules.BAB_ILU, "Excalibur cools faster than the key");
@@ -143,22 +150,27 @@ public final class RulesCheck {
     }
 
     private static void judgement() {
-        for (Side s : new Side[]{Side.VANILLA, Side.PLAYER}) {
-            check(JudgementRules.outcome(Weapon.EXCALIBUR, s, true) == Outcome.INSTANT_DEATH, "Excalibur kills " + s);
-        }
-        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.VANILLA_BOSS, true) == Outcome.INSTANT_DEATH, "Excalibur kills bosses");
-        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.VANILLA_BOSS, false) == Outcome.HEAVY_DAMAGE, "boss rule off: heavy damage");
-        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.MAHORAGA, true) == Outcome.WHEEL_CANNOT_TURN, "Excalibur kills Mahoraga");
-        check(JudgementRules.outcome(Weapon.EA, Side.MAHORAGA, true) == Outcome.WHEEL_CANNOT_TURN, "Ea kills Mahoraga");
-        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.GOJO, true) == Outcome.CRIPPLE, "Excalibur cripples Gojo");
-        check(JudgementRules.outcome(Weapon.EA, Side.GOJO, true) == Outcome.CHARACTER_DAMAGE, "Ea hurts Gojo normally (through Infinity)");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.VANILLA, true, true) == Outcome.INSTANT_DEATH, "Excalibur kills vanilla creatures");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.PLAYER, false, true) == Outcome.INSTANT_DEATH, "Excalibur kills an ordinary player");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.VANILLA_BOSS, true, true) == Outcome.INSTANT_DEATH, "Excalibur kills bosses");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.VANILLA_BOSS, true, false) == Outcome.HEAVY_DAMAGE, "boss rule off: 1000");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.MAHORAGA, true, true) == Outcome.WHEEL_CANNOT_TURN, "Excalibur kills Mahoraga");
+        check(JudgementRules.outcome(Weapon.EA, Side.MAHORAGA, true, true) == Outcome.WHEEL_CANNOT_TURN, "Ea kills Mahoraga");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.GOJO, true, true) == Outcome.CRIPPLE, "Excalibur cripples the Gojo NPC");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.GOJO, false, true) == Outcome.CRIPPLE, "... and a Gojo player");
+        check(JudgementRules.outcome(Weapon.EA, Side.GOJO, true, true) == Outcome.NPC_BLOW, "Ea on the Gojo NPC: 190 (through Infinity)");
+        check(JudgementRules.outcome(Weapon.EA, Side.GOJO, false, true) == Outcome.CHARACTER_DAMAGE, "Ea on a Gojo player: 90-100");
         for (Side s : new Side[]{Side.SUKUNA, Side.HERO, Side.KNIGHT}) {
-            check(JudgementRules.outcome(Weapon.EXCALIBUR, s, true) == Outcome.CHARACTER_DAMAGE, "Excalibur on " + s + ": 90-100");
-            check(JudgementRules.outcome(Weapon.EA, s, true) == Outcome.CHARACTER_DAMAGE, "Ea on " + s + ": 90-100");
+            for (Weapon w : Weapon.values()) {
+                check(JudgementRules.outcome(w, s, true, true) == Outcome.NPC_BLOW, w + " on the " + s + " NPC: 190");
+                check(JudgementRules.outcome(w, s, false, true) == Outcome.CHARACTER_DAMAGE, w + " on a " + s + " player: 90-100");
+            }
         }
-        check(JudgementRules.outcome(Weapon.EA, Side.VANILLA, true) == Outcome.HEAVY_DAMAGE, "Ea on mobs: 4000");
-        check(JudgementRules.outcome(Weapon.EA, Side.PLAYER, true) == Outcome.CHARACTER_DAMAGE, "Ea on a player: 90-100");
-        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.OTHER_MOD, true) == Outcome.HEAVY_DAMAGE, "other mods' creatures: heavy damage, no instakill");
+        for (Side s : new Side[]{Side.VANILLA, Side.VANILLA_BOSS, Side.OTHER_MOD}) {
+            check(JudgementRules.outcome(Weapon.EA, s, true, true) == Outcome.HEAVY_DAMAGE, "Ea on " + s + ": 1000");
+        }
+        check(JudgementRules.outcome(Weapon.EA, Side.PLAYER, false, true) == Outcome.CHARACTER_DAMAGE, "Ea on a player: 90-100");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.OTHER_MOD, true, true) == Outcome.HEAVY_DAMAGE, "other mods' creatures: 1000, no instakill");
         check(JudgementRules.piercesInfinity(Weapon.EA) && JudgementRules.piercesInfinity(Weapon.EXCALIBUR), "both pierce Infinity");
         check(JudgementRules.worthy(Side.HERO, false) && JudgementRules.worthy(Side.KNIGHT, false), "kings are worthy");
         check(JudgementRules.worthy(Side.MAHORAGA, false) && JudgementRules.worthy(Side.VANILLA_BOSS, false), "Mahoraga and bosses are worthy");
@@ -278,12 +290,20 @@ public final class RulesCheck {
             check(Files.exists(a.resolve("sounds/voice/" + v.clip + ".ogg")), "voice file " + v.clip + ".ogg");
             check(v.seconds > 0.5f && v.seconds < 8.0f, "sane duration " + v.clip);
         }
+        for (String dmg : new String[]{"enuma_elish_mob", "excalibur_mob"}) {
+            JsonObject type = json(res.resolve("data/fatekings/damage_type/" + dmg + ".json"));
+            String base = dmg.substring(0, dmg.length() - "_mob".length());
+            check(("fatekings." + base).equals(type.get("message_id").getAsString()), dmg + " shares the death messages of " + base);
+        }
+        String armour = Files.readString(res.resolve("data/minecraft/tags/damage_type/bypasses_armor.json"));
+        check(armour.contains("\"fatekings:enuma_elish\"") && armour.contains("\"fatekings:excalibur\"") && !armour.contains("_mob"),
+            "armour stops the 1000 on creatures, not the blows on characters");
         for (String dmg : new String[]{"enuma_elish", "excalibur", "excalibur_judgement", "heavens_chain", "mana_burst", "sword_qi"}) {
             check(Files.exists(res.resolve("data/fatekings/damage_type/" + dmg + ".json")), "damage type " + dmg);
             check(zh.has("death.attack.fatekings." + dmg) && zh.has("death.attack.fatekings." + dmg + ".player"), "death messages " + dmg);
         }
         String inv = Files.readString(res.resolve("data/minecraft/tags/damage_type/bypasses_invulnerability.json"));
-        check(inv.contains("excalibur_judgement") && !inv.contains("\"fatekings:excalibur\"") && !inv.contains("enuma_elish"),
+        check(inv.contains("excalibur_judgement") && !inv.contains("\"fatekings:excalibur\"") && !inv.contains("enuma_elish") && !inv.contains("_mob"),
             "only the judgement type ignores invulnerability (the character types keep each side's share)");
         for (String k : Skills.HERO_HUD) check(zh.has("fatekings.skill." + k), "skill name " + k);
         for (String k : Skills.KNIGHT_HUD) check(zh.has("fatekings.skill." + k), "skill name " + k);

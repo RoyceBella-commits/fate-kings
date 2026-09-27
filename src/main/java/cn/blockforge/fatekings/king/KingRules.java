@@ -20,6 +20,8 @@ public final class KingRules {
     public static final float NPC_GOLD_HP = GOLD_HP * NPC_MAX_HEALTH / MAX_HEALTH;
     /** A player's blows on a king NPC: the fight lasts as long as against an 80-health king. */
     public static final float PLAYER_VS_NPC = NPC_MAX_HEALTH / MAX_HEALTH;
+    /** An NPC's heals scale with its pool, so it recovers at the pace of an 80-health king. */
+    public static final float NPC_HEAL_SCALE = NPC_MAX_HEALTH / MAX_HEALTH;
     /** A king's blows (NPC or player) on a Gojo / Sukuna NPC: their techniques ignore armour, ours do not. */
     public static final float KING_VS_JJK_DAMAGE = 2.0f;
     public static final float ARMOR = 30.0f;
@@ -100,10 +102,23 @@ public final class KingRules {
     // ---- Noble phantasms ----
     public static final double EA_RANGE = 200.0;
     public static final double EXCALIBUR_RANGE = 160.0;
-    public static final float EA_MOB_DAMAGE = 4000.0f;
-    public static final float OTHER_MOD_MOB_DAMAGE = 1000.0f;
+    /** Ea / Excalibur on a creature (Ea: every creature; Excalibur: other mods' and spared bosses). Armour applies. */
+    public static final float MOB_DAMAGE = 1000.0f;
+    /**
+     * Health a Gojo / Sukuna / king NPC loses to Ea or Excalibur once every share of both mods has
+     * been applied; armour and gold hearts do not soak it (200 health: one blow leaves 10).
+     */
+    public static final float NPC_PHANTASM_LOSS = 190.0f;
 
     private KingRules() {
+    }
+
+    /**
+     * The blow to deal so that {@code loss} is what remains once the target's shares (a product
+     * {@code scale}, e.g. 10% x 2.5) have been applied. A missing or broken scale deals the loss as is.
+     */
+    public static float rawForLoss(float loss, float scale) {
+        return scale > 1.0E-6f && Float.isFinite(scale) ? loss / scale : loss;
     }
 
     /** Which king a set of worn pieces makes: 4 of one set and nothing of the other. */
@@ -159,6 +174,10 @@ public final class KingRules {
     }
 
     /** Avalon's regeneration per second: 4 HP once 5 s out of combat, 1 HP while fighting. */
+    public static float healScale(boolean npc) {
+        return npc ? NPC_HEAL_SCALE : 1.0f;
+    }
+
     public static float avalonRegen(long ticksSinceCombat) {
         return ticksSinceCombat >= 100 ? 4.0f : 1.0f;
     }

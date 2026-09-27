@@ -36,6 +36,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
@@ -97,7 +98,58 @@ public class FateServerTests {
         GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
         LivingEntity golem = still(h.spawn(EntityTypes.IRON_GOLEM, 4.5f, 2.0f, 4.5f));
         Judgement.strike(level, gil, null, golem, Weapon.EA, 1.0f);
-        h.assertTrue(golem.isDeadOrDying(), "4000 damage must kill an iron golem");
+        h.assertTrue(golem.isDeadOrDying(), "1000 damage must kill an iron golem");
+        h.succeed();
+    }
+
+    /** A creature with the most health vanilla allows, so the blow can be measured. */
+    private static LivingEntity sturdy(GameTestHelper h, float x, float z, double armour) {
+        LivingEntity golem = still(h.spawn(EntityTypes.IRON_GOLEM, x, 2.0f, z));
+        golem.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1024.0);
+        golem.getAttribute(Attributes.ARMOR).setBaseValue(armour);
+        golem.setHealth(1024.0f);
+        return golem;
+    }
+
+    @GameTest
+    public void creaturesTakeAThousandAndArmourCounts(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        LivingEntity bare = sturdy(h, 5.5f, 1.5f, 0.0);
+        LivingEntity armoured = sturdy(h, 5.5f, 5.5f, 20.0);
+        Judgement.strike(level, gil, null, bare, Weapon.EA, 1.0f);
+        Judgement.strike(level, gil, null, armoured, Weapon.EA, 1.0f);
+        float bareLoss = 1024.0f - bare.getHealth(), armouredLoss = 1024.0f - armoured.getHealth();
+        h.assertTrue(Math.abs(bareLoss - 1000.0f) < 0.01f, "Ea on a creature: 1000 (" + bareLoss + ")");
+        h.assertTrue(armoured.isAlive() && armouredLoss < bareLoss - 50.0f && armouredLoss > 500.0f, "armour takes its part (" + armouredLoss + ")");
+        h.succeed();
+    }
+
+    private static void assertLoss(GameTestHelper h, LivingEntity t, float before, String what) {
+        float loss = before - t.getHealth();
+        float want = Math.min(KingRules.NPC_PHANTASM_LOSS, before);
+        h.assertTrue(Math.abs(loss - want) < 0.01f, what + ": " + want + " health off (" + loss + ")");
+    }
+
+    @GameTest
+    public void phantasmsTake190FromKingNpcs(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 6.5f, 2.0f, 1.5f));
+        GilgameshEntity gil2 = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 6.5f));
+        Kings.of(saber).cooldown(Skills.AVALON_DOME, level.getGameTime(), KingRules.AVALON_DOME); // no dome for this one
+        Judgement.strike(level, gil, null, saber, Weapon.EA, 1.0f);
+        assertLoss(h, saber, 200.0f, "Ea on Artoria");
+        Judgement.strike(level, saber, null, gil, Weapon.EXCALIBUR, 1.0f);
+        assertLoss(h, gil, 200.0f, "Excalibur on Gilgamesh");
+        for (LivingEntity k : new LivingEntity[]{saber, gil}) {
+            h.assertTrue(Kings.of(k).gold == KingRules.NPC_GOLD_HP, "gold hearts do not soak it (" + k.getType() + ")");
+        }
+        // A player king: the x2.5 on NPCs is folded in the same way.
+        Player knight = h.makeMockPlayer(GameType.SURVIVAL);
+        Kings.of(knight).king = KingRules.KNIGHT;
+        Judgement.strike(level, knight, null, gil2, Weapon.EXCALIBUR, 1.0f);
+        assertLoss(h, gil2, 200.0f, "a knight player's Excalibur on Gilgamesh");
         h.succeed();
     }
 
@@ -237,6 +289,20 @@ public class FateServerTests {
         h.succeed();
     }
 
+    @GameTest(maxTicks = 60)
+    public void artoriaNpcHealsAtAPlayersPace(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 5.5f, 2.0f, 5.5f));
+        saber.setHealth(100.0f);
+        Kings.of(saber).lastCombat = level.getGameTime() - 200L; // long out of combat
+        h.runAfterDelay(21, () -> {
+            float gain = saber.getHealth() - 100.0f;
+            // Out of combat Avalon gives a player 4 per second (5% of 80); the NPC gets 10 (5% of 200).
+            h.assertTrue(gain >= 9.99f && Math.abs(gain - 10.0f * Math.round(gain / 10.0f)) < 0.01f, "Avalon heals the NPC 10 a second (" + gain + ")");
+            h.succeed();
+        });
+    }
+
     @GameTest
     public void knightSparesTheLineOfFire(GameTestHelper h) {
         ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 1.5f, 2.0f, 4.5f));
@@ -334,6 +400,33 @@ public class FateServerTests {
         b.hurtServer(level, gil.damageSources().mobAttack(gil), 100.0f);
         float fromZombie = ha - a.getHealth(), fromKing = hb - b.getHealth();
         h.assertTrue(fromKing > fromZombie * 3.0f && fromKing > 1.0f, "a king counts as a mod character (" + fromZombie + " vs " + fromKing + ")");
+        h.succeed();
+    }
+
+    @GameTest
+    public void phantasmsTake190FromJjkNpcs(GameTestHelper h) {
+        if (!JjkCompat.LOADED) {
+            h.succeed();
+            return;
+        }
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 1.5f, 2.0f, 6.5f));
+        LivingEntity gojo = spawnJjk(h, JjkCompat.GOJO, 6.5, 2.0, 1.5);
+        LivingEntity s1 = spawnJjk(h, JjkCompat.SUKUNA, 6.5, 2.0, 4.0);
+        LivingEntity s2 = spawnJjk(h, JjkCompat.SUKUNA, 6.5, 2.0, 6.5);
+        LivingEntity s3 = spawnJjk(h, JjkCompat.SUKUNA, 4.0, 2.0, 6.5);
+        Player hero = h.makeMockPlayer(GameType.SURVIVAL);
+        Kings.of(hero).king = KingRules.HERO;
+        float g = gojo.getHealth(), a = s1.getHealth(), b = s2.getHealth(), c = s3.getHealth();
+        Judgement.strike(level, gil, null, gojo, Weapon.EA, 1.0f);
+        assertLoss(h, gojo, g, "Ea through Infinity on the Gojo NPC");
+        Judgement.strike(level, gil, null, s1, Weapon.EA, 1.0f);
+        assertLoss(h, s1, a, "Gilgamesh's Ea on the Sukuna NPC");
+        Judgement.strike(level, saber, null, s2, Weapon.EXCALIBUR, 1.0f);
+        assertLoss(h, s2, b, "Artoria's Excalibur on the Sukuna NPC");
+        Judgement.strike(level, hero, null, s3, Weapon.EA, 1.0f);
+        assertLoss(h, s3, c, "a hero player's Ea on the Sukuna NPC");
         h.succeed();
     }
 

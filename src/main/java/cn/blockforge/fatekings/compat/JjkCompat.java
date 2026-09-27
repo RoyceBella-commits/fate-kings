@@ -7,6 +7,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -38,6 +39,7 @@ public final class JjkCompat {
     private static AttachmentType<Object> curse;
     private static Method route, stage, withGold, setState, sync, goldHpTable, infinityActive, activeSkill, terrain, setTerrain, slashMode;
     private static Field burstHeal;
+    private static Method damageTaken;
 
     private JjkCompat() {
     }
@@ -85,9 +87,26 @@ public final class JjkCompat {
             LOGGER.warn("Gojo x Sukuna NPC healing not adjustable", e);
         }
         try {
+            damageTaken = Class.forName(PKG + "combat.DamageTaken").getMethod("apply", LivingEntity.class, DamageSource.class, float.class);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            LOGGER.warn("Gojo x Sukuna damage shares not readable", e);
+        }
+        try {
             slashMode = Class.forName(PKG + "entity.CurseSlashEntity").getMethod("getMode");
         } catch (ReflectiveOperationException | RuntimeException e) {
             LOGGER.warn("Gojo x Sukuna slash mode not readable", e);
+        }
+    }
+
+    /** The share of this hit the Gojo x Sukuna mod lets through to {@code target} (1 when it does not scale it). */
+    public static float takenScale(LivingEntity target, DamageSource source) {
+        if (!LOADED) return 1.0f;
+        resolve();
+        if (damageTaken == null) return 1.0f;
+        try {
+            return (Float)damageTaken.invoke(null, target, source, 1.0f);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return 1.0f;
         }
     }
 
