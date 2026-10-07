@@ -35,8 +35,10 @@ import net.minecraft.world.phys.Vec3;
  * the air, looking down on everything. Arrogant (a stray treasure now and then, no dodging) ->
  * displeased (more gates, Enkidu) -> serious (volleys, rings, binding chains, keeps his distance) ->
  * Ea, but only against the worthy and only when it is truly needed (180 s cooldown, twice per fight
- * at most). He does not stoop to strike those who cannot fight. Against Saber: chains first, serious
- * at her first blow, Ea as soon as he is hurt enough.
+ * at most). Against a strong foe he pairs Enkidu with his treasures: chains whenever they are ready,
+ * treasures while the foe is held. His gates take every foe near him in turn. He does not stoop to
+ * strike those who cannot fight. Against Saber: chains first, serious at her first blow, Ea as soon
+ * as he is hurt enough.
  */
 public class GilgameshEntity extends KingNpcEntity implements Enemy {
     private static final String EA_COOLDOWN = "npc_ea";
@@ -172,6 +174,21 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
         if (target instanceof net.minecraft.world.entity.Mob mob && JjkCompat.fromJjk(target) && mob.getTarget() != this) {
             // "An insolent greeting": one treasure, and the sorcerer turns on him.
             mob.setTarget(this);
+        }
+        boolean strong = Sides.worthy(target) || saber;
+        if (KingAiRules.gilChainCombo(this.tier, strong, this.kingState.ready(Skills.ENKIDU_BIND, now))) {
+            // "Enkidu!" and the gates open on the one held.
+            Enkidu.bindTarget(level, this, target);
+            this.kingState.cooldown(Skills.ENKIDU_BIND, now, KingAiRules.COMBO_BIND_COOLDOWN);
+            GateOfBabylon.npcShots(this, target, KingAiRules.gilGates(this.tier, this.random.nextFloat()));
+            this.shotCooldown = 30 + this.random.nextInt(15);
+            return;
+        }
+        if (strong && this.tier != KingAiRules.ARROGANT && Enkidu.bound(target)) {
+            // Held by the chains: nothing but treasures until they let go.
+            GateOfBabylon.npcShots(this, target, KingAiRules.gilGates(this.tier, this.random.nextFloat()));
+            this.shotCooldown = 35 + this.random.nextInt(15);
+            return;
         }
         switch (this.tier) {
             case KingAiRules.ARROGANT -> {

@@ -13,6 +13,8 @@ public final class KingAiRules {
     public static final float DISPLEASED_DAMAGE = 40.0f;
     public static final int INFINITY_BLOCKED_FOR_EA = 200;
     public static final int EA_PER_FIGHT = 2;
+    /** His own chain cooldown against a strong foe (a player's is 20 s): he reaches for them more often. */
+    public static final int COMBO_BIND_COOLDOWN = 240;
 
     // ---- Artoria ----
     public static final int COURTESY = 0;
@@ -55,6 +57,14 @@ public final class KingAiRules {
         if (vsSaber) return healthFrac < 0.5f || hitByExcalibur;
         if (tier < SERIOUS || !foeWorthy) return false;
         return healthFrac < 1.0f / 3.0f || infinityBlockedTicks >= INFINITY_BLOCKED_FOR_EA || mahoragaAdapted || enemyDomain;
+    }
+
+    /**
+     * Against a strong foe (worthy, or Saber) Gilgamesh pairs his treasures with Enkidu: whenever the
+     * chains are ready he binds first and fires while the foe is held. Not while still arrogant.
+     */
+    public static boolean gilChainCombo(int tier, boolean strongFoe, boolean bindReady) {
+        return tier >= DISPLEASED && strongFoe && bindReady;
     }
 
     /** Gates opened per casual shot in each tier (arrogant 1-3, displeased 8-15, serious 30-60). */

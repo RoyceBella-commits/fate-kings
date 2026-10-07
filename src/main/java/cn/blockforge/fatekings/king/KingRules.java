@@ -85,6 +85,12 @@ public final class KingRules {
     public static final int EXCALIBUR_AUTO_RELEASE = 120;
 
     // ---- Gate of Babylon, Instinct, sword qi, leap ----
+    /** At most this many foes share one cast of the Gate of Babylon (the one aimed at first). */
+    public static final int GOB_MAX_TARGETS = 6;
+    /** A player's treasures pick foes within 40 degrees of where he looked when he pressed. */
+    public static final double GOB_CONE_COS = 0.766;
+    /** An NPC leads a moving foe once, when it casts, by at most this far. */
+    public static final double GOB_NPC_LEAD_MAX = 6.0;
     public static final float GOB_DAMAGE_MIN = 20.0f;
     public static final float GOB_DAMAGE_MAX = 30.0f;
     public static final float DODGE_VANILLA = 0.50f;
@@ -119,6 +125,26 @@ public final class KingRules {
      */
     public static float rawForLoss(float loss, float scale) {
         return scale > 1.0E-6f && Float.isFinite(scale) ? loss / scale : loss;
+    }
+
+    /** Which of {@code marks} aimed spots the {@code gate}-th gate fires at: the foes take turns, the first one first. */
+    public static int gateMark(int gate, int marks) {
+        return marks <= 0 ? -1 : Math.floorMod(gate, marks);
+    }
+
+    /**
+     * Where an NPC aims at a moving foe, worked out once when it casts: the foe's horizontal pace
+     * (blocks per tick) carried over the wait plus the flight, capped at {@link #GOB_NPC_LEAD_MAX}.
+     */
+    public static double[] npcLead(double[] centre, double[] pace, double distance, int delayTicks, double speed) {
+        double t = delayTicks + distance / Math.max(0.1, speed);
+        double dx = pace[0] * t, dz = pace[2] * t;
+        double len = Math.sqrt(dx * dx + dz * dz);
+        if (len > GOB_NPC_LEAD_MAX) {
+            dx *= GOB_NPC_LEAD_MAX / len;
+            dz *= GOB_NPC_LEAD_MAX / len;
+        }
+        return new double[]{centre[0] + dx, centre[1], centre[2] + dz};
     }
 
     /** Which king a set of worn pieces makes: 4 of one set and nothing of the other. */

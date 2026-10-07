@@ -1,23 +1,27 @@
 package cn.blockforge.fatekings.gametest;
 
 import cn.blockforge.fatekings.combat.DamageShare;
-import cn.blockforge.fatekings.combat.Sides;
-import cn.blockforge.fatekings.combat.Terrain;
-import cn.blockforge.fatekings.config.FateConfig;
-import cn.blockforge.fatekings.entity.SwordQiEntity;
 import cn.blockforge.fatekings.combat.Judgement;
 import cn.blockforge.fatekings.combat.JudgementRules.Weapon;
+import cn.blockforge.fatekings.combat.Sides;
+import cn.blockforge.fatekings.combat.Terrain;
 import cn.blockforge.fatekings.compat.JjkCompat;
+import cn.blockforge.fatekings.config.FateConfig;
+import cn.blockforge.fatekings.entity.GatePortalEntity;
+import cn.blockforge.fatekings.entity.SwordQiEntity;
 import cn.blockforge.fatekings.hero.Enkidu;
+import cn.blockforge.fatekings.hero.GateOfBabylon;
 import cn.blockforge.fatekings.king.KingRules;
 import cn.blockforge.fatekings.king.KingState;
 import cn.blockforge.fatekings.king.Kings;
 import cn.blockforge.fatekings.king.Skills;
 import cn.blockforge.fatekings.npc.ArtoriaEntity;
 import cn.blockforge.fatekings.npc.GilgameshEntity;
+import cn.blockforge.fatekings.npc.KingAiRules;
 import cn.blockforge.fatekings.registry.FateDamage;
 import cn.blockforge.fatekings.registry.FateEffects;
 import cn.blockforge.fatekings.registry.FateEntities;
+import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -26,8 +30,9 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -300,6 +305,102 @@ public class FateServerTests {
             // Out of combat Avalon gives a player 4 per second (5% of 80); the NPC gets 10 (5% of 200).
             h.assertTrue(gain >= 9.99f && Math.abs(gain - 10.0f * Math.round(gain / 10.0f)) < 0.01f, "Avalon heals the NPC 10 a second (" + gain + ")");
             h.succeed();
+        });
+    }
+
+    /** Gates opened round {@code caster} (other tests' gates are far away). */
+    private static List<GatePortalEntity> gatesNear(LivingEntity caster) {
+        return caster.level().getEntitiesOfClass(GatePortalEntity.class, caster.getBoundingBox().inflate(8.0), g -> !g.isRemoved());
+    }
+
+    private static boolean same(Vec3 a, Vec3 b) {
+        return a != null && b != null && a.distanceToSqr(b) < 1.0E-4;
+    }
+
+    @GameTest
+    public void npcGatesTakeFoesInTurnAndStayPut(GameTestHelper h) {
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        LivingEntity[] foes = {still(h.spawn(EntityTypes.ZOMBIE, 5.5f, 2.0f, 1.5f)), still(h.spawn(EntityTypes.ZOMBIE, 5.5f, 2.0f, 5.5f)),
+            still(h.spawn(EntityTypes.ZOMBIE, 1.5f, 2.0f, 5.5f))};
+        // One tick so the foes have stood still for a tick (nothing to lead).
+        h.runAfterDelay(1, () -> {
+            Vec3[] centres = new Vec3[foes.length];
+            for (int i = 0; i < foes.length; ++i) centres[i] = foes[i].getBoundingBox().getCenter();
+            GateOfBabylon.npcShots(gil, foes[0], 6);
+            List<GatePortalEntity> gates = gatesNear(gil);
+            h.assertTrue(gates.size() == 6, "6 gates (" + gates.size() + ")");
+            for (Vec3 c : centres) {
+                h.assertTrue(gates.stream().filter(g -> same(g.aimPoint(), c)).count() == 2, "each of the three foes gets two gates");
+            }
+            Vec3[] aimed = gates.stream().map(GatePortalEntity::aimPoint).toArray(Vec3[]::new);
+            Vec3[] facing = gates.stream().map(GatePortalEntity::facing).toArray(Vec3[]::new);
+            // The foe steps away before the treasures fly: the gates do not follow it.
+            foes[0].teleportTo(foes[0].getX(), foes[0].getY(), foes[0].getZ() + 2.0);
+            h.runAfterDelay(2, () -> {
+                for (int i = 0; i < gates.size(); ++i) {
+                    GatePortalEntity g = gates.get(i);
+                    h.assertTrue(!g.fired() && same(g.aimPoint(), aimed[i]) && g.facing().dot(facing[i]) > 0.9999, "gate " + i + " keeps its aim");
+                }
+                gates.forEach(GatePortalEntity::discard);
+                h.succeed();
+            });
+        });
+    }
+
+    /** Puts a player there, looking that way (the view follows the head). */
+    private static void turn(ServerPlayer p, Vec3 at, float yaw, float pitch) {
+        p.snapTo(at.x, at.y, at.z, yaw, pitch);
+        p.setYHeadRot(yaw);
+    }
+
+    @GameTest
+    public void playerVolleyIsAimedWhenPressed(GameTestHelper h) {
+        ServerPlayer p = h.makeMockServerPlayerInLevel();
+        Kings.of(p).king = KingRules.HERO;
+        Vec3 at = h.absoluteVec(new Vec3(1.5, 2.0, 1.5));
+        turn(p, at, -90.0f, 0.0f); // facing +x
+        LivingEntity ahead = still(h.spawn(EntityTypes.ZOMBIE, 6.5f, 2.0f, 1.5f));
+        LivingEntity aside = still(h.spawn(EntityTypes.ZOMBIE, 6.5f, 2.0f, 3.5f));
+        still(h.spawn(EntityTypes.ZOMBIE, 1.5f, 2.0f, 6.5f)); // right beside him: outside the 40 degrees
+        Vec3 ca = ahead.getBoundingBox().getCenter(), cb = aside.getBoundingBox().getCenter();
+        GateOfBabylon.press(p);
+        GateOfBabylon.Salvo s = GateOfBabylon.pressed(p);
+        h.assertTrue(s != null && s.marks().size() == 2 && same(s.marks().get(0), ca) && same(s.marks().get(1), cb),
+            "the foe in the crosshair first, then the one in view; not the one beside him: " + (s == null ? null : s.marks()));
+        Vec3 eye = s.eye();
+        // He turns round and steps aside while holding: the cast stays as it was when he pressed.
+        Vec3 moved = h.absoluteVec(new Vec3(1.5, 2.0, 5.5));
+        turn(p, moved, 90.0f, 30.0f);
+        GateOfBabylon.growVolley(p, 30);
+        List<GatePortalEntity> gates = GateOfBabylon.volley(p);
+        h.assertTrue(gates.size() == KingRules.volleyGates(30), "the volley grows (" + gates.size() + ")");
+        int onAhead = 0, onAside = 0;
+        for (GatePortalEntity g : gates) {
+            h.assertTrue(g.getX() < eye.x - 1.0 && Math.abs(g.getZ() - eye.z) < 4.0, "gates open behind where he stood when he pressed");
+            if (same(g.aimPoint(), ca)) ++onAhead;
+            else if (same(g.aimPoint(), cb)) ++onAside;
+            else h.fail("a gate aimed elsewhere: " + g.aimPoint());
+        }
+        h.assertTrue(onAhead > 0 && onAside > 0 && Math.abs(onAhead - onAside) <= 1, "the two foes share the volley (" + onAhead + " / " + onAside + ")");
+        GateOfBabylon.cancelVolley(p);
+        h.assertTrue(GateOfBabylon.pressed(p) == null, "nothing left over");
+        h.succeed();
+    }
+
+    @GameTest(maxTicks = 120)
+    public void gilgameshChainsAStrongFoeAndFires(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        LivingEntity warden = still(h.spawn(EntityTypes.WARDEN, 6.0f, 2.0f, 6.0f));
+        // A worthy foe strikes first: he turns serious.
+        gil.hurtServer(level, warden.damageSources().mobAttack(warden), 5.0f);
+        h.assertTrue(gil.tier() == KingAiRules.SERIOUS, "serious after a worthy foe's blow");
+        gil.setTarget(warden);
+        h.succeedWhen(() -> {
+            List<GatePortalEntity> gates = gatesNear(gil);
+            h.assertTrue(warden.hasEffect(FateEffects.HEAVENS_CHAIN), "Enkidu first");
+            h.assertFalse(gates.isEmpty(), "and the treasures with it");
+            gates.forEach(GatePortalEntity::discard);
         });
     }
 

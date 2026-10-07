@@ -6,7 +6,7 @@
   "item.fatekings.golden_sabatons": "黄金铠甲·战靴",
   "item.fatekings.gate_of_babylon": "王之财宝",
   "item.fatekings.gate_of_babylon.desc": "宝库之门。人世间一切财宝的原典都在其中。",
-  "item.fatekings.gate_of_babylon.use": "短按：点射 · 按住：齐射（松开发射）· 潜行+右键：环形包围",
+  "item.fatekings.gate_of_babylon.use": "短按：点射 · 按住：齐射（松开发射）· 潜行+右键：环形包围 · 按下右键时定好方向和目标，多个敌人时轮流射向每个，不追踪",
   "item.fatekings.bab_ilu": "王律键·巴布·伊鲁",
   "item.fatekings.bab_ilu.desc": "开启宝库最深处的钥匙之剑。",
   "item.fatekings.bab_ilu.use": "英雄王按住右键 2 秒：开锁，取出乖离剑 Ea",

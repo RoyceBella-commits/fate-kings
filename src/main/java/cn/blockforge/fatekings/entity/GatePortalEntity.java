@@ -22,7 +22,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * A golden ripple of the Gate of Babylon. The treasure's hilt shows first; a moment before it is
- * fired it turns and bares its blade (design doc 6.1). Never saved.
+ * fired it turns and bares its blade (design doc 6.1). The spot it fires at is fixed when it opens:
+ * it does not follow anyone. Never saved.
  */
 public class GatePortalEntity extends Entity {
     /** Tick (of this entity) at which the treasure flies; -1 while a volley is still being held. */
@@ -31,7 +32,6 @@ public class GatePortalEntity extends Entity {
     private static final EntityDataAccessor<Float> SIZE = SynchedEntityData.defineId(GatePortalEntity.class, EntityDataSerializers.FLOAT);
     private static final int FADE = 10;
     private UUID ownerId;
-    private LivingEntity target;
     private Vec3 aimPoint;
     private int effect;
     private boolean single;
@@ -45,15 +45,17 @@ public class GatePortalEntity extends Entity {
         this.setNoGravity(true);
     }
 
-    public static GatePortalEntity open(ServerLevel level, LivingEntity owner, Vec3 pos, Vec3 facing, ItemStack weapon, int effect, boolean single) {
+    /** Opens a gate at {@code pos} that will fire at {@code mark}. */
+    public static GatePortalEntity open(ServerLevel level, LivingEntity owner, Vec3 pos, Vec3 mark, ItemStack weapon, int effect, boolean single) {
         GatePortalEntity g = new GatePortalEntity(FateEntities.GATE_PORTAL, level);
         g.ownerId = owner.getUUID();
         g.effect = effect;
         g.single = single;
+        g.aimPoint = mark;
         g.entityData.set(WEAPON, weapon.copy());
         g.entityData.set(FIRE_AT, -1);
         g.snapTo(pos.x, pos.y, pos.z, 0.0f, 0.0f);
-        g.face(facing);
+        g.face(mark.subtract(pos));
         level.addFreshEntity(g);
         level.playSound(null, pos.x, pos.y, pos.z, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 0.6f, 1.6f + level.getRandom().nextFloat() * 0.4f);
         return g;
@@ -97,11 +99,14 @@ public class GatePortalEntity extends Entity {
         return this.entityData.get(FIRE_AT);
     }
 
-    /** Fires {@code delay} ticks from now at the target (or the point). */
-    public void release(LivingEntity target, Vec3 point, int delay) {
-        this.target = target;
-        this.aimPoint = point;
+    /** Fires {@code delay} ticks from now, straight at the spot it was opened for. */
+    public void release(int delay) {
         this.entityData.set(FIRE_AT, this.tickCount + Math.max(4, delay));
+    }
+
+    /** The spot this gate fires at. */
+    public Vec3 aimPoint() {
+        return this.aimPoint;
     }
 
     public void setSpeed(double speed) {
@@ -122,11 +127,7 @@ public class GatePortalEntity extends Entity {
             return;
         }
         int at = this.fireAt();
-        if (!this.fired && at >= 0) {
-            Vec3 aim = this.target != null && this.target.isAlive() ? this.target.getBoundingBox().getCenter() : this.aimPoint;
-            if (aim != null) face(aim.subtract(this.position()));
-            if (this.tickCount >= at) fire(level, (LivingEntity)owner, aim);
-        }
+        if (!this.fired && at >= 0 && this.tickCount >= at) fire(level, (LivingEntity)owner, this.aimPoint);
         if (this.fired && this.tickCount - this.firedAt > FADE) this.discard();
     }
 

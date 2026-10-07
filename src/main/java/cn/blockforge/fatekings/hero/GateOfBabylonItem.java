@@ -29,6 +29,8 @@ public class GateOfBabylonItem extends KingItem {
             if (!level.isClientSide()) GateOfBabylon.ring(player);
             return InteractionResult.SUCCESS;
         }
+        // Aimed now, on the press: where the gates open, which way they face, what they fire at.
+        if (!level.isClientSide()) GateOfBabylon.press(player);
         player.startUsingItem(hand);
         return InteractionResult.CONSUME;
     }
@@ -49,6 +51,7 @@ public class GateOfBabylonItem extends KingItem {
         } else if (held < KingRules.GOB_VOLLEY_MIN) {
             GateOfBabylon.tap(user, 3, true);
         }
+        GateOfBabylon.forget(user);
         return true;
     }
 

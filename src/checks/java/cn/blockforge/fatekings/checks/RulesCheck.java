@@ -73,6 +73,19 @@ public final class RulesCheck {
         check(KingRules.volleyGates(40) > 5 && KingRules.volleyGates(40) < 100, "gates grow while held");
         check(KingRules.GOB_VOLLEY == 60, "volley cooldown 3 s (was 8 s)");
         check(KingRules.GOB_DAMAGE_MIN == 20.0f && KingRules.GOB_DAMAGE_MAX == 30.0f, "treasures hit for 20-30 (was 12-18)");
+        check(KingRules.gateMark(0, 3) == 0 && KingRules.gateMark(1, 3) == 1 && KingRules.gateMark(2, 3) == 2 && KingRules.gateMark(3, 3) == 0,
+            "gates take the foes in turn, the aimed one first");
+        check(KingRules.gateMark(5, 1) == 0 && KingRules.gateMark(0, 0) == -1, "one foe takes all; none: no mark");
+        int[] perFoe = new int[3];
+        for (int g = 0; g < 100; ++g) ++perFoe[KingRules.gateMark(g, 3)];
+        check(perFoe[0] == 34 && perFoe[1] == 33 && perFoe[2] == 33, "100 gates over 3 foes: 34 / 33 / 33");
+        check(KingRules.GOB_MAX_TARGETS == 6 && Math.abs(KingRules.GOB_CONE_COS - Math.cos(Math.toRadians(40.0))) < 0.001, "up to 6 foes within 40 degrees");
+        double[] still = KingRules.npcLead(new double[]{1, 2, 3}, new double[]{0, 0, 0}, 20.0, 8, 3.0);
+        check(still[0] == 1 && still[1] == 2 && still[2] == 3, "a foe standing still: aimed at where it is");
+        double[] runner = KingRules.npcLead(new double[]{0, 0, 0}, new double[]{0.2, 0.5, 0}, 6.0, 8, 3.0);
+        check(near(runner[0], 0.2 * (8 + 2)) && runner[1] == 0.0 && runner[2] == 0.0, "a runner: led once along its way, never up or down");
+        double[] fast = KingRules.npcLead(new double[]{0, 0, 0}, new double[]{3, 0, 4}, 30.0, 8, 3.0);
+        check(near(Math.hypot(fast[0], fast[2]), KingRules.GOB_NPC_LEAD_MAX), "the lead is capped");
         check(KingRules.DODGE_VANILLA == 0.5f && KingRules.DODGE_TREASURE == 0.35f, "Instinct: 50% / 35% (was 30% / 20%)");
         check(KingRules.REVEALED == 200, "blade revealed 10 s after Strike Air");
         check(KingRules.NPC_MAX_HEALTH == 200.0f && KingRules.MAX_HEALTH == 80.0f, "NPCs 200 health, players unchanged");
@@ -203,6 +216,12 @@ public final class RulesCheck {
         check(KingAiRules.gilGates(KingAiRules.ARROGANT, 0.0f) == 1 && KingAiRules.gilGates(KingAiRules.ARROGANT, 1.0f) == 3, "arrogant: 1-3 treasures");
         check(KingAiRules.gilGates(KingAiRules.DISPLEASED, 0.0f) == 8 && KingAiRules.gilGates(KingAiRules.DISPLEASED, 1.0f) == 15, "displeased: 8-15");
         check(KingAiRules.gilGates(KingAiRules.SERIOUS, 0.0f) == 30 && KingAiRules.gilGates(KingAiRules.SERIOUS, 1.0f) == 60, "serious: 30-60");
+        check(KingAiRules.gilChainCombo(KingAiRules.SERIOUS, true, true) && KingAiRules.gilChainCombo(KingAiRules.DISPLEASED, true, true),
+            "a strong foe: chains and treasures together whenever the chains are ready");
+        check(!KingAiRules.gilChainCombo(KingAiRules.ARROGANT, true, true), "not while still arrogant");
+        check(!KingAiRules.gilChainCombo(KingAiRules.SERIOUS, false, true), "not for ordinary foes");
+        check(!KingAiRules.gilChainCombo(KingAiRules.SERIOUS, true, false), "not while the chains cool down");
+        check(KingAiRules.COMBO_BIND_COOLDOWN < KingRules.ENKIDU_BIND, "against the strong he reaches for the chains more often");
         check(KingAiRules.saberTier(1.0f, false) == KingAiRules.COURTESY, "courtesy by default");
         check(KingAiRules.saberTier(1.0f, true) == KingAiRules.FULL_POWER, "strong foe: full power");
         check(KingAiRules.saberTier(0.6f, false) == KingAiRules.FULL_POWER, "below 70%: full power");

@@ -6,7 +6,7 @@
   "item.fatekings.golden_sabatons": "Golden Armor Sabatons",
   "item.fatekings.gate_of_babylon": "Gate of Babylon",
   "item.fatekings.gate_of_babylon.desc": "The treasury holding the originals of every treasure in the world.",
-  "item.fatekings.gate_of_babylon.use": "Tap: shots · Hold: volley on release · Sneak: ring around the target",
+  "item.fatekings.gate_of_babylon.use": "Tap: shots · Hold: volley on release · Sneak: ring around the target · Aimed when pressed; several foes are taken in turn; no homing",
   "item.fatekings.bab_ilu": "Bab-ilu, Key of the King's Law",
   "item.fatekings.bab_ilu.desc": "The key sword to the deepest vault.",
   "item.fatekings.bab_ilu.use": "King of Heroes, hold 2 s: unlock and draw Ea",
