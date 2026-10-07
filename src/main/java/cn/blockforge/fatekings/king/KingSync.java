@@ -12,7 +12,8 @@ public final class KingSync {
     /** Every cooldown key the HUD can show, by index. */
     public static final String[] KEYS = {Skills.GOB_TAP, Skills.GOB_VOLLEY, Skills.GOB_RING, Skills.BAB_ILU, Skills.ENKIDU_HOOK,
         Skills.ENKIDU_BIND, Skills.VIMANA, Skills.ELIXIR, Skills.AUTODEFENDER, Skills.STRIKE_AIR, Skills.MANA_BURST,
-        Skills.EXCALIBUR, Skills.WARHORSE, Skills.AVALON_LETHAL, Skills.AVALON_DOME};
+        Skills.EXCALIBUR, Skills.WARHORSE, Skills.AVALON_LETHAL, Skills.AVALON_DOME, Skills.BOW_TAP, Skills.CALADBOLG, Skills.RHO_AIAS,
+        Skills.TWIN_THROW, Skills.CRANE_WING, Skills.TRACE, Skills.UBW, Skills.EXCALIBUR_REPLICA};
 
     private KingSync() {
     }
@@ -33,6 +34,11 @@ public final class KingSync {
         buf.writeVarInt(left(s.regenPausedUntil, now));
         buf.writeVarInt(KEYS.length);
         for (String key : KEYS) buf.writeVarInt(s.cooldownLeft(key, now));
+        // The Archer's windows (appended; ClientKingState reads them in this order).
+        buf.writeVarInt(cn.blockforge.fatekings.archer.Archer.ubwLeft(p));
+        buf.writeByte(cn.blockforge.fatekings.archer.Archer.rhoPetals(p));
+        buf.writeVarInt(cn.blockforge.fatekings.archer.Archer.rhoLeft(p));
+        buf.writeByte(cn.blockforge.fatekings.archer.Archer.projected(p));
         FateNet.send(p, FateNet.S2C_STATE, buf);
     }
 

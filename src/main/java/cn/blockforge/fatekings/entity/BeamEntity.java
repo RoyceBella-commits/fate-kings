@@ -35,6 +35,8 @@ public abstract class BeamEntity extends Entity {
     protected UUID ownerId;
     protected float multiplierOnHero = 1.0f;
     protected double maxFront;
+    /** Where the front stops early (Caladbolg at its target), or -1. */
+    protected double stopAt = -1.0;
     protected long launchedAt;
 
     protected BeamEntity(EntityType<? extends BeamEntity> type, Level level) {
@@ -151,10 +153,21 @@ public abstract class BeamEntity extends Entity {
             double from = front();
             double to = Math.min(this.maxFront, from + speed());
             Vec3 d = dir();
+            boolean end = to >= this.maxFront;
+            // Rho Aias stops whatever it can stop where the front meets it.
+            double shield = cn.blockforge.fatekings.archer.RhoAias.interceptBeam(level, this, this.position().add(d.scale(from)), this.position().add(d.scale(to)));
+            if (shield >= 0.0) {
+                to = from + shield;
+                end = true;
+            }
+            if (this.stopAt >= 0.0 && to >= this.stopAt) {
+                to = Math.max(from, this.stopAt);
+                end = true;
+            }
             onSegment(level, owner, this.position().add(d.scale(from)), this.position().add(d.scale(to)), width());
             this.entityData.set(FRONT, (float)to);
             NoblePhantasmClash.track(this);
-            if (to >= this.maxFront) finish();
+            if (end || this.stopAt >= 0.0 && to >= this.stopAt) finish();
         } else if (state == ENDING && stateAge(0.0f) >= endingTicks()) {
             this.discard();
         } else if (state == CLASHING && stateAge(0.0f) > 200) {

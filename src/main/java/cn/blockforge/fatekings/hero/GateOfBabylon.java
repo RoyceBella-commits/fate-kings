@@ -160,11 +160,8 @@ public final class GateOfBabylon {
 
     /** NPC: whatever it would fight. Player: monsters and whatever is after him, never players or his own pets. */
     private static boolean hostileTo(LivingEntity caster, LivingEntity e) {
-        if (e == caster || !e.isAlive() || e.isSpectator() || caster.isPassengerOfSameVehicle(e)) return false;
-        if (caster instanceof KingNpcEntity npc) return npc.canHarm(e);
-        if (e instanceof Player || Sides.noncombatant(e)) return false;
-        if (e instanceof OwnableEntity pet && pet.getOwner() == caster) return false;
-        return e instanceof Enemy || e instanceof Mob m && m.getTarget() == caster;
+        if (caster instanceof KingNpcEntity npc) return e != caster && e.isAlive() && !e.isSpectator() && npc.canHarm(e);
+        return cn.blockforge.fatekings.combat.Targets.hostileTo(caster, e);
     }
 
     /** Where to aim at a foe: where it is; an NPC leads a moving foe once, when it casts. */

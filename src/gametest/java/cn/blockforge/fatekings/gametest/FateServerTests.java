@@ -476,9 +476,9 @@ public class FateServerTests {
         LivingEntity gojo = spawnJjk(h, JjkCompat.GOJO, 5.5, 2.0, 5.5);
         float hp = gojo.getHealth();
         gojo.hurtServer(level, gil.damageSources().mobAttack(gil), 60.0f);
-        gojo.setInvulnerableTime(0);
+        Judgement.fresh(gojo);
         gojo.hurtServer(level, FateDamage.source(level, FateDamage.CHAIN, gil, gil), 60.0f);
-        gojo.setInvulnerableTime(0);
+        Judgement.fresh(gojo);
         h.assertTrue(gojo.getHealth() == hp, "fists and chains stop at Infinity");
         gojo.hurtServer(level, FateDamage.source(level, FateDamage.ENUMA_ELISH, gil, gil), 95.0f);
         h.assertTrue(gojo.getHealth() < hp, "Enuma Elish goes through Infinity");

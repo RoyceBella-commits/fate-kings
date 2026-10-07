@@ -56,6 +56,9 @@ public final class Instinct {
         for (ArtoriaEntity a : level.getEntitiesOfClass(ArtoriaEntity.class, new AABB(source.blockPosition()).inflate(WARN_RANGE))) {
             if (a != source) a.onWarning(source, key);
         }
+        for (var e : level.getEntitiesOfClass(cn.blockforge.fatekings.npc.EmiyaEntity.class, new AABB(source.blockPosition()).inflate(WARN_RANGE))) {
+            if (e != source) e.onWarning(source, key);
+        }
     }
 
     /** Gojo x Sukuna ultimates: charging players (polled) and freshly spawned domains / Purple / World Cut. */
@@ -91,6 +94,7 @@ public final class Instinct {
         if (!(direct instanceof Projectile)) return false;
         float chance;
         if (direct instanceof TreasureProjectile tp) chance = tp.single() ? KingRules.DODGE_TREASURE : 0.0f;
+        else if (direct instanceof cn.blockforge.fatekings.entity.ProjectedArrowEntity) chance = KingRules.DODGE_TREASURE;
         else chance = "minecraft".equals(JjkCompat.typeId(direct).getNamespace()) ? KingRules.DODGE_VANILLA : 0.0f;
         if (chance <= 0.0f || target.getRandom().nextFloat() >= chance) return false;
         if (!(target.level() instanceof ServerLevel level)) return false;

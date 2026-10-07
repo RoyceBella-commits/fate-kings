@@ -230,5 +230,125 @@
         "name": "fatekings:voice/saber_victory"
       }
     ]
+  },
+  "voice.emiya_spawn": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_spawn"
+      }
+    ]
+  },
+  "voice.emiya_start": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_start"
+      }
+    ]
+  },
+  "voice.emiya_full_power": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_full_power"
+      }
+    ]
+  },
+  "voice.emiya_head_on": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_head_on"
+      }
+    ]
+  },
+  "voice.emiya_trace_on": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_trace_on"
+      }
+    ]
+  },
+  "voice.emiya_finish_it": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_finish_it"
+      }
+    ]
+  },
+  "voice.emiya_forge": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_forge"
+      }
+    ]
+  },
+  "voice.emiya_ubw_chant": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_ubw_chant"
+      }
+    ]
+  },
+  "voice.emiya_ubw_release": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_ubw_release"
+      }
+    ]
+  },
+  "voice.emiya_twin": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_twin"
+      }
+    ]
+  },
+  "voice.emiya_there": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_there"
+      }
+    ]
+  },
+  "voice.emiya_got_you": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_got_you"
+      }
+    ]
+  },
+  "voice.emiya_hurt": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_hurt"
+      }
+    ]
+  },
+  "voice.emiya_defeat": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_defeat"
+      }
+    ]
+  },
+  "voice.emiya_victory": {
+    "category": "voice",
+    "sounds": [
+      {
+        "name": "fatekings:voice/emiya_victory"
+      }
+    ]
   }
 }

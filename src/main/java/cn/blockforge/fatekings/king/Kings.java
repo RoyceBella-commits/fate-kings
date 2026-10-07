@@ -1,6 +1,9 @@
 package cn.blockforge.fatekings.king;
 
 import cn.blockforge.fatekings.FateKings;
+import cn.blockforge.fatekings.archer.Archer;
+import cn.blockforge.fatekings.archer.ArcherPassives;
+import cn.blockforge.fatekings.archer.ArcherRules;
 import cn.blockforge.fatekings.combat.DamageRules;
 import cn.blockforge.fatekings.combat.Fx;
 import cn.blockforge.fatekings.compat.JjkCompat;
@@ -47,6 +50,7 @@ public final class Kings {
     public static final Identifier MOD_EXCALIBUR = FateKings.id("excalibur_power");
     public static final Identifier MOD_REACH = FateKings.id("invisible_air_reach");
     public static final Identifier MOD_DEPLETION = FateKings.id("mana_depletion");
+    public static final Identifier MOD_TWIN = FateKings.id("kanshou_bakuya");
     private static final Component[] NO_ARGS = {};
 
     /** Client hooks (set by the client initializer; the defaults describe a dedicated server). */
@@ -89,6 +93,10 @@ public final class Kings {
         return king(e) == KingRules.KNIGHT;
     }
 
+    public static boolean isArcher(Entity e) {
+        return king(e) == KingRules.ARCHER;
+    }
+
     public static long now(Entity e) {
         return e.level().getGameTime();
     }
@@ -105,6 +113,12 @@ public final class Kings {
         return n;
     }
 
+    public static int archerPieces(LivingEntity e) {
+        int n = 0;
+        for (EquipmentSlot slot : ARMOR) if (FateItems.archerPiece(e.getItemBySlot(slot))) ++n;
+        return n;
+    }
+
     private static final EquipmentSlot[] ARMOR = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 
     // ---------------------------------------------------------------------------------------------
@@ -114,7 +128,7 @@ public final class Kings {
     public static void tick(ServerPlayer p) {
         KingState s = of(p);
         long now = now(p);
-        int wanted = p.isSpectator() || !p.isAlive() ? KingRules.NONE : KingRules.kingOfSet(heroPieces(p), knightPieces(p));
+        int wanted = p.isSpectator() || !p.isAlive() ? KingRules.NONE : KingRules.kingOfSet(heroPieces(p), knightPieces(p), archerPieces(p));
         if (wanted != s.king) {
             if (wanted != KingRules.NONE && !KingRules.mayEnter(wanted, s.lockedFrom, s.lockUntil, now)) {
                 if (now % 20 == 0) {
@@ -128,14 +142,22 @@ public final class Kings {
         if (now % 10 == 0 || s.dirty) applyAttributes(p, s);
         updateHeldModifiers(p, s, now);
         tickGold(p, s, now);
-        if (s.king == KingRules.HERO) {
-            HeroPassives.tick(p, s, now);
-            if (now % 20 == 0) SideSync.send(p);
+        switch (s.king) {
+            case KingRules.HERO -> HeroPassives.tick(p, s, now);
+            case KingRules.KNIGHT -> KnightPassives.tick(p, s, now);
+            case KingRules.ARCHER -> ArcherPassives.tick(p, s, now);
+            default -> {
+            }
         }
-        if (s.king == KingRules.KNIGHT) KnightPassives.tick(p, s, now);
+        // Sha Naqba Imuru for the King of Heroes, Clairvoyance for the Archer.
+        if ((s.king == KingRules.HERO || s.king == KingRules.ARCHER) && now % 20 == 0) SideSync.send(p);
         HeroPassives.tickFlight(p, s);
+        Archer.sweep(p, now);
         if (s.dirty || now % 10 == 0) KingSync.send(p, s, now);
-        if (now % 10 == 0 && p.containerMenu != p.inventoryMenu) EaItem.purgeContainer(p);
+        if (now % 10 == 0 && p.containerMenu != p.inventoryMenu) {
+            EaItem.purgeContainer(p);
+            Archer.purgeMenu(p);
+        }
     }
 
     private static void transition(ServerPlayer p, KingState s, int to, long now) {
@@ -149,6 +171,7 @@ public final class Kings {
             }
             cn.blockforge.fatekings.hero.GateOfBabylon.cancelVolley(p);
             EaItem.dissipateAll(p);
+            if (from == KingRules.ARCHER) Archer.leave(p);
             s.lockedFrom = from;
             s.lockUntil = now + KingRules.SWAP_LOCK;
         }
@@ -161,7 +184,16 @@ public final class Kings {
         if (s.gold < 0.0f) s.gold = goldTarget(p);
         s.gold = Math.min(s.gold, goldTarget(p));
         applyAttributes(p, s);
-        if (to == KingRules.HERO) {
+        if (to == KingRules.ARCHER) {
+            // The Red Shroud: a flare of embers and the ring of a hammer on the anvil.
+            Fx.event(level, Fx.ARRIVAL_ARCHER, p, p.position(), 40, 1.0f, 64.0);
+            Fx.eventTo(p, Fx.TITLE_ARCHER, p, p.position(), 60, 1.0f);
+            Fx.ring(level, p.position().add(0.0, 0.3, 0.0), Fx.EMBER, 1.5, 32);
+            Fx.particles(level, ParticleTypes.SMALL_FLAME, p.getX(), p.getY() + 1.0, p.getZ(), 24, 0.6, 0.9, 0.6, 0.02);
+            Fx.particles(level, Fx.dust(Fx.SHROUD_RED, 1.1f), p.getX(), p.getY() + 1.0, p.getZ(), 24, 0.6, 0.8, 0.6, 0.0);
+            level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.SMITHING_TABLE_USE, SoundSource.PLAYERS, 1.4f, 0.8f);
+            level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.FIRECHARGE_USE, SoundSource.PLAYERS, 0.8f, 0.7f);
+        } else if (to == KingRules.HERO) {
             Fx.event(level, Fx.ARRIVAL_HERO, p, p.position(), 40, 1.0f, 64.0);
             Fx.eventTo(p, Fx.TITLE_HERO, p, p.position(), 60, 1.0f);
             Fx.ring(level, p.position().add(0.0, 1.2, 0.0), Fx.GOLD, 1.6, 36);
@@ -225,7 +257,7 @@ public final class Kings {
         topUp(e, Attributes.ARMOR, MOD_ARMOR, king ? KingRules.ARMOR : 0.0);
         topUp(e, Attributes.ARMOR_TOUGHNESS, MOD_TOUGHNESS, king ? KingRules.TOUGHNESS : 0.0);
         set(e, Attributes.KNOCKBACK_RESISTANCE, MOD_KNOCKBACK, king ? 1.0 : 0.0, AttributeModifier.Operation.ADD_VALUE);
-        double speed = s.king == KingRules.HERO ? KingRules.HERO_SPEED : s.king == KingRules.KNIGHT ? KingRules.KNIGHT_SPEED : 0.0;
+        double speed = KingRules.speed(s.king);
         set(e, Attributes.MOVEMENT_SPEED, MOD_SPEED, speed, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
         if (e.getHealth() > e.getMaxHealth()) e.setHealth(e.getMaxHealth());
     }
@@ -241,6 +273,8 @@ public final class Kings {
         set(p, Attributes.ENTITY_INTERACTION_RANGE, MOD_REACH, knightSword && !revealed ? 1.5 : 0.0, AttributeModifier.Operation.ADD_VALUE);
         set(p, Attributes.MOVEMENT_SPEED, MOD_DEPLETION, s.king == KingRules.KNIGHT && s.depleted(now) ? -0.4 : 0.0,
             AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        boolean twin = s.king == KingRules.ARCHER && FateItems.twinSword(main);
+        topUp(p, Attributes.ATTACK_DAMAGE, MOD_TWIN, twin ? ArcherRules.TWIN_SWING : 0.0);
     }
 
     /** Adds / updates / removes a transient modifier (0 removes it). */
@@ -284,6 +318,7 @@ public final class Kings {
         s.guardUntil = 0L;
         s.healUntil = 0L;
         s.dirty = true;
+        Archer.leave(p);
     }
 
     public static void refuse(Player p, String key, Object... args) {

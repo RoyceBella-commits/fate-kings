@@ -74,7 +74,7 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
     @Override
     public boolean canHarm(LivingEntity t) {
         if (t == this || !t.isAlive() || Sides.noncombatant(t)) return false;
-        if (t instanceof ArtoriaEntity) return true;
+        if (t instanceof ArtoriaEntity || t instanceof EmiyaEntity) return true;
         Side side = Sides.side(t);
         if (side == Side.GOJO || side == Side.SUKUNA || side == Side.MAHORAGA) return !(t instanceof Player);
         // "Mongrel, who allowed you to look upon the king?" Hostile monsters within 16 blocks.
@@ -162,7 +162,8 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
         }
         move(level, target, dist);
         if (this.kingState.reorganizing(now)) return; // treasury reorganisation: fists only
-        boolean domain = JjkCompat.LOADED && !level.getEntities(this, this.getBoundingBox().inflate(40.0), JjkCompat::domain).isEmpty();
+        boolean domain = JjkCompat.LOADED && !level.getEntities(this, this.getBoundingBox().inflate(40.0), JjkCompat::domain).isEmpty()
+            || cn.blockforge.fatekings.entity.UbwEntity.foreignNear(this, 40.0);
         boolean mahoragaAdapted = JjkCompat.is(target, JjkCompat.MAHORAGA) && this.combatTicks > 320;
         boolean eaReady = this.kingState.ready(EA_COOLDOWN, now);
         if (KingAiRules.gilWantsEa(this.tier, Sides.worthy(target), this.getHealth() / this.getMaxHealth(), this.infinityBlocked,
@@ -277,12 +278,21 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
         }
     }
 
+    /** Saber first; failing her, the faker. */
     private void lookForSaber(ServerLevel level) {
         if (this.getTarget() instanceof ArtoriaEntity || this.tickCount % 20 != 0) return;
         for (ArtoriaEntity a : level.getEntitiesOfClass(ArtoriaEntity.class, this.getBoundingBox().inflate(48.0), ArtoriaEntity::isAlive)) {
             if (this.hasLineOfSight(a) && (this.getTarget() == null || this.getHealth() > this.getMaxHealth() * 0.5f)) {
                 this.setTarget(a);
                 this.tier = Math.max(this.tier, KingAiRules.ARROGANT);
+                return;
+            }
+        }
+        if (this.getTarget() instanceof EmiyaEntity) return;
+        for (EmiyaEntity e : level.getEntitiesOfClass(EmiyaEntity.class, this.getBoundingBox().inflate(48.0), EmiyaEntity::isAlive)) {
+            if (this.hasLineOfSight(e) && this.getTarget() == null) {
+                this.setTarget(e);
+                VoicePlayer.say(this, Voice.GIL_FAKER);
                 return;
             }
         }

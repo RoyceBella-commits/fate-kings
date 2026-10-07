@@ -1,13 +1,15 @@
 package cn.blockforge.fatekings.king;
 
 /**
- * Pure tables and rules of the two kings (no game classes, so they are checked headlessly by
- * {@code RulesCheck}). Times are in ticks unless a name says otherwise.
+ * Pure tables and rules of the heroic spirits (no game classes, so they are checked headlessly by
+ * {@code RulesCheck}). Internally every spirit is a "king": HERO (Gilgamesh), KNIGHT (Artoria) and
+ * ARCHER (EMIYA). Times are in ticks unless a name says otherwise.
  */
 public final class KingRules {
     public static final int NONE = 0;
     public static final int HERO = 1;
     public static final int KNIGHT = 2;
+    public static final int ARCHER = 3;
 
     /** Leaving one king's state locks the other one for 15 s (design doc chapter 3). */
     public static final int SWAP_LOCK = 300;
@@ -29,6 +31,7 @@ public final class KingRules {
     public static final float UNARMED = 24.0f;
     public static final float HERO_SPEED = 0.20f;
     public static final float KNIGHT_SPEED = 0.30f;
+    public static final float ARCHER_SPEED = 0.25f;
     /** Share of a hit a king still takes: 1% from anything vanilla, 10% from another mod character. */
     public static final float TAKEN_VANILLA = 0.01f;
     public static final float TAKEN_MOD = 0.10f;
@@ -149,9 +152,25 @@ public final class KingRules {
 
     /** Which king a set of worn pieces makes: 4 of one set and nothing of the other. */
     public static int kingOfSet(int heroPieces, int knightPieces) {
-        if (heroPieces == 4 && knightPieces == 0) return HERO;
-        if (knightPieces == 4 && heroPieces == 0) return KNIGHT;
+        return kingOfSet(heroPieces, knightPieces, 0);
+    }
+
+    /** Exactly the four pieces of one set and nothing of the others. */
+    public static int kingOfSet(int heroPieces, int knightPieces, int archerPieces) {
+        if (heroPieces == 4 && knightPieces == 0 && archerPieces == 0) return HERO;
+        if (knightPieces == 4 && heroPieces == 0 && archerPieces == 0) return KNIGHT;
+        if (archerPieces == 4 && heroPieces == 0 && knightPieces == 0) return ARCHER;
         return NONE;
+    }
+
+    /** Extra movement speed of each spirit (multiplied base). */
+    public static float speed(int king) {
+        return switch (king) {
+            case HERO -> HERO_SPEED;
+            case KNIGHT -> KNIGHT_SPEED;
+            case ARCHER -> ARCHER_SPEED;
+            default -> 0.0f;
+        };
     }
 
     /**
@@ -244,6 +263,11 @@ public final class KingRules {
     }
 
     public static String roman(int king) {
-        return king == HERO ? "HERO" : king == KNIGHT ? "KNIGHT" : "NONE";
+        return switch (king) {
+            case HERO -> "HERO";
+            case KNIGHT -> "KNIGHT";
+            case ARCHER -> "ARCHER";
+            default -> "NONE";
+        };
     }
 }

@@ -2,6 +2,7 @@ package cn.blockforge.fatekings.knight;
 
 import cn.blockforge.fatekings.combat.Aim;
 import cn.blockforge.fatekings.combat.Fx;
+import cn.blockforge.fatekings.combat.Judgement;
 import cn.blockforge.fatekings.combat.Terrain;
 import cn.blockforge.fatekings.entity.ExcaliburWaveEntity;
 import cn.blockforge.fatekings.entity.StrikeAirEntity;
@@ -133,7 +134,7 @@ public final class ExcaliburSkill {
         for (LivingEntity t : level.getEntitiesOfClass(LivingEntity.class, e.getBoundingBox().expandTowards(v).inflate(1.0),
                 t -> t != e && t.isAlive() && !t.isSpectator() && !e.isPassengerOfSameVehicle(t))) {
             if (!d.hit.add(t.getId())) continue;
-            t.setInvulnerableTime(0);
+            Judgement.fresh(t);
             t.hurtServer(level, FateDamage.source(level, FateDamage.MANA_BURST, e, e), 20.0f);
             Vec3 side = new Vec3(-d.dir.z, 0.0, d.dir.x).normalize().scale(t.getRandom().nextBoolean() ? 1.0 : -1.0);
             t.push(side.x * 1.2 + d.dir.x * 0.6, 0.5, side.z * 1.2 + d.dir.z * 0.6);

@@ -1,15 +1,21 @@
 package cn.blockforge.fatekings.registry;
 
 import cn.blockforge.fatekings.FateKings;
+import cn.blockforge.fatekings.entity.CaladbolgEntity;
 import cn.blockforge.fatekings.entity.ChainEntity;
 import cn.blockforge.fatekings.entity.EnumaElishEntity;
 import cn.blockforge.fatekings.entity.ExcaliburWaveEntity;
 import cn.blockforge.fatekings.entity.GatePortalEntity;
+import cn.blockforge.fatekings.entity.ProjectedArrowEntity;
 import cn.blockforge.fatekings.entity.StrikeAirEntity;
 import cn.blockforge.fatekings.entity.SwordQiEntity;
+import cn.blockforge.fatekings.entity.ThrownBladeEntity;
 import cn.blockforge.fatekings.entity.TreasureProjectile;
+import cn.blockforge.fatekings.entity.UbwEntity;
+import cn.blockforge.fatekings.entity.UbwSwordEntity;
 import cn.blockforge.fatekings.entity.VimanaEntity;
 import cn.blockforge.fatekings.npc.ArtoriaEntity;
+import cn.blockforge.fatekings.npc.EmiyaEntity;
 import cn.blockforge.fatekings.npc.GilgameshEntity;
 import cn.blockforge.fatekings.npc.KingNpcEntity;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
@@ -26,6 +32,8 @@ public final class FateEntities {
         EntityType.Builder.<GilgameshEntity>of(GilgameshEntity::new, MobCategory.MONSTER).sized(0.6f, 1.8f).eyeHeight(1.62f).clientTrackingRange(10));
     public static final EntityType<ArtoriaEntity> ARTORIA = register("artoria",
         EntityType.Builder.<ArtoriaEntity>of(ArtoriaEntity::new, MobCategory.CREATURE).sized(0.6f, 1.8f).eyeHeight(1.62f).clientTrackingRange(10));
+    public static final EntityType<EmiyaEntity> EMIYA = register("emiya",
+        EntityType.Builder.<EmiyaEntity>of(EmiyaEntity::new, MobCategory.CREATURE).sized(0.6f, 1.8f).eyeHeight(1.62f).clientTrackingRange(10));
     public static final EntityType<TreasureProjectile> TREASURE = register("treasure",
         EntityType.Builder.<TreasureProjectile>of(TreasureProjectile::new, MobCategory.MISC).sized(0.5f, 0.5f).clientTrackingRange(8).updateInterval(2).fireImmune().noSave());
     public static final EntityType<GatePortalEntity> GATE_PORTAL = register("gate_portal",
@@ -43,6 +51,17 @@ public final class FateEntities {
     public static final EntityType<StrikeAirEntity> STRIKE_AIR = register("strike_air",
         EntityType.Builder.<StrikeAirEntity>of(StrikeAirEntity::new, MobCategory.MISC).sized(1.2f, 1.2f).clientTrackingRange(8).updateInterval(1).fireImmune().noSave().noSummon());
 
+    public static final EntityType<ProjectedArrowEntity> PROJECTED_ARROW = register("projected_arrow",
+        EntityType.Builder.<ProjectedArrowEntity>of(ProjectedArrowEntity::new, MobCategory.MISC).sized(0.5f, 0.5f).clientTrackingRange(8).updateInterval(1).fireImmune().noSave());
+    public static final EntityType<CaladbolgEntity> CALADBOLG = register("caladbolg",
+        EntityType.Builder.<CaladbolgEntity>of(CaladbolgEntity::new, MobCategory.MISC).sized(1.0f, 1.0f).clientTrackingRange(16).updateInterval(1).fireImmune().noSave().noSummon());
+    public static final EntityType<ThrownBladeEntity> THROWN_BLADE = register("thrown_blade",
+        EntityType.Builder.<ThrownBladeEntity>of(ThrownBladeEntity::new, MobCategory.MISC).sized(0.6f, 0.6f).clientTrackingRange(8).updateInterval(1).fireImmune().noSave().noSummon());
+    public static final EntityType<UbwEntity> UBW = register("unlimited_blade_works",
+        EntityType.Builder.<UbwEntity>of(UbwEntity::new, MobCategory.MISC).sized(1.0f, 1.0f).clientTrackingRange(16).updateInterval(5).fireImmune().noSave().noSummon());
+    public static final EntityType<UbwSwordEntity> UBW_SWORD = register("ubw_sword",
+        EntityType.Builder.<UbwSwordEntity>of(UbwSwordEntity::new, MobCategory.MISC).sized(0.5f, 0.5f).clientTrackingRange(8).updateInterval(1).fireImmune().noSave().noSummon());
+
     private FateEntities() {
     }
 
@@ -54,5 +73,6 @@ public final class FateEntities {
     public static void init() {
         FabricDefaultAttributeRegistry.register(GILGAMESH, KingNpcEntity.createAttributes());
         FabricDefaultAttributeRegistry.register(ARTORIA, KingNpcEntity.createAttributes());
+        FabricDefaultAttributeRegistry.register(EMIYA, KingNpcEntity.createAttributes());
     }
 }

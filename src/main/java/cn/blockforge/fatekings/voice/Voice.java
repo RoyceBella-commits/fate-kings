@@ -26,6 +26,7 @@ public enum Voice {
     GIL_SECOND_EA(Speaker.GILGAMESH, null, 3.0f),
     GIL_KILL_MAHORAGA(Speaker.GILGAMESH, null, 3.0f),
     GIL_DISDAIN(Speaker.GILGAMESH, null, 3.0f),
+    GIL_FAKER(Speaker.GILGAMESH, null, 3.5f),
 
     SABER_SPAWN(Speaker.ARTORIA, "saber_spawn", 3.3f),
     SABER_SALUTE(Speaker.ARTORIA, "saber_salute", 2.0f),
@@ -43,9 +44,34 @@ public enum Voice {
     SABER_VICTORY(Speaker.ARTORIA, "saber_victory", 1.9f),
     SABER_REPLY(Speaker.ARTORIA, null, 3.0f),
     SABER_CRIPPLED_GOJO(Speaker.ARTORIA, null, 3.0f),
-    SABER_KILL_MAHORAGA(Speaker.ARTORIA, null, 3.0f);
+    SABER_KILL_MAHORAGA(Speaker.ARTORIA, null, 3.0f),
 
-    public enum Speaker { GILGAMESH, ARTORIA }
+    EMIYA_SPAWN(Speaker.EMIYA, "emiya_spawn", 3.8f),
+    EMIYA_START(Speaker.EMIYA, "emiya_start", 1.5f),
+    EMIYA_FULL_POWER(Speaker.EMIYA, "emiya_full_power", 1.9f),
+    EMIYA_HEAD_ON(Speaker.EMIYA, "emiya_head_on", 3.0f),
+    EMIYA_TRACE_ON(Speaker.EMIYA, "emiya_trace_on", 0.8f),
+    EMIYA_FINISH_IT(Speaker.EMIYA, "emiya_finish_it", 2.3f),
+    EMIYA_FORGE(Speaker.EMIYA, "emiya_forge", 3.4f),
+    EMIYA_UBW_CHANT(Speaker.EMIYA, "emiya_ubw_chant", 2.85f),
+    EMIYA_UBW_RELEASE(Speaker.EMIYA, "emiya_ubw_release", 5.75f),
+    EMIYA_TWIN(Speaker.EMIYA, "emiya_twin", 1.2f),
+    EMIYA_THERE(Speaker.EMIYA, "emiya_there", 0.65f),
+    EMIYA_GOT_YOU(Speaker.EMIYA, "emiya_got_you", 0.8f),
+    EMIYA_HURT(Speaker.EMIYA, "emiya_hurt", 0.9f),
+    EMIYA_DEFEAT(Speaker.EMIYA, "emiya_defeat", 2.3f),
+    EMIYA_VICTORY(Speaker.EMIYA, "emiya_victory", 2.4f),
+    EMIYA_CALADBOLG(Speaker.EMIYA, null, 3.0f),
+    EMIYA_RHO_AIAS(Speaker.EMIYA, null, 2.5f),
+    EMIYA_CRANE_WING(Speaker.EMIYA, null, 2.0f),
+    EMIYA_BROKEN_PHANTASM(Speaker.EMIYA, null, 2.0f),
+    EMIYA_FULL_OPEN(Speaker.EMIYA, null, 3.0f),
+    EMIYA_VS_GIL(Speaker.EMIYA, null, 3.5f),
+    EMIYA_KILL_MAHORAGA(Speaker.EMIYA, null, 3.0f),
+    EMIYA_REPLICA(Speaker.EMIYA, null, 3.5f),
+    EMIYA_ANALYSIS(Speaker.EMIYA, null, 2.0f);
+
+    public enum Speaker { GILGAMESH, ARTORIA, EMIYA }
 
     public final Speaker speaker;
     /** Sound file (under sounds/voice/), or null for a subtitle-only line. */
@@ -71,7 +97,8 @@ public enum Voice {
         return switch (this) {
             case GIL_UNLOCK, GIL_EA_DRAWN, GIL_EA_CHANT, GIL_EA_RELEASE, GIL_DEFEAT, GIL_DEFEAT_SABER, GIL_SABER_NAME,
                  SABER_RELEASE_CALL, SABER_EXCALIBUR_CHANT, SABER_EXCALIBUR_RELEASE, SABER_AVALON, SABER_DEFEAT,
-                 SABER_LAST_STAND, GIL_PROPOSAL, SABER_REPLY -> true;
+                 SABER_LAST_STAND, GIL_PROPOSAL, SABER_REPLY, GIL_FAKER, EMIYA_UBW_CHANT, EMIYA_UBW_RELEASE, EMIYA_CALADBOLG,
+                 EMIYA_RHO_AIAS, EMIYA_DEFEAT, EMIYA_VS_GIL, EMIYA_FULL_OPEN -> true;
             default -> false;
         };
     }

@@ -1,0 +1,76 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "fatekings:item/kanshou"
+  },
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [
+        0,
+        -90,
+        55
+      ],
+      "translation": [
+        0,
+        6.4,
+        0.5
+      ],
+      "scale": [
+        1.36,
+        1.36,
+        1.36
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        0,
+        90,
+        -55
+      ],
+      "translation": [
+        0,
+        6.4,
+        0.5
+      ],
+      "scale": [
+        1.36,
+        1.36,
+        1.36
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        -90,
+        25
+      ],
+      "translation": [
+        1.13,
+        5.120000000000001,
+        1.13
+      ],
+      "scale": [
+        1.088,
+        1.088,
+        1.088
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        90,
+        -25
+      ],
+      "translation": [
+        1.13,
+        5.120000000000001,
+        1.13
+      ],
+      "scale": [
+        1.088,
+        1.088,
+        1.088
+      ]
+    }
+  }
+}

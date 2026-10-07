@@ -53,10 +53,16 @@ public final class WorldFx {
             return;
         }
         if (kind == Fx.PILLAR) EVENTS.removeIf(e -> e.kind == Fx.PILLAR && e.entityId == id);
+        if (kind == Fx.RHO_AIAS) {
+            // One shield per bearer; duration 0 takes it down.
+            EVENTS.removeIf(e -> e.kind == Fx.RHO_AIAS && e.entityId == id);
+            if (duration == 0) return;
+        }
         EVENTS.add(new Event(kind, id, pos, mc.level.getGameTime(), duration, strength));
         switch (kind) {
             case Fx.TITLE_HERO -> FateHud.title("fatekings.title.hero", 0xFFFFD34A, duration);
             case Fx.TITLE_KNIGHT -> FateHud.title("fatekings.title.knight", 0xFFBFE4FF, duration);
+            case Fx.TITLE_ARCHER -> FateHud.title("fatekings.title.archer", 0xFFFF6A4A, duration);
             default -> {
             }
         }
@@ -107,11 +113,15 @@ public final class WorldFx {
                     case Fx.CLASH -> clashOrb(pose, b, rel, age, e.duration, cam.subtract(at));
                     case Fx.ARRIVAL_HERO -> arrival(pose, b, rel, age, 0xFFD34A);
                     case Fx.ARRIVAL_KNIGHT -> arrival(pose, b, rel, age, 0xBFE4FF);
+                    case Fx.ARRIVAL_ARCHER -> arrival(pose, b, rel, age, 0xFF6A3A);
+                    case Fx.RHO_AIAS -> ArcherFx.rhoAias(pose, b, rel, anchor, age, e.duration, (int)e.strength, partial, low);
+                    case Fx.TRACE -> ArcherFx.trace(pose, b, rel, anchor, age, e.duration);
                     case Fx.ARMOR_SCATTER -> scatter(pose, b, rel, age);
                     default -> {
                     }
                 }
             }
+            ArcherFx.twinTrails(pose, b, level, cam, partial, low);
             extracted = b.snapshot();
         });
     }

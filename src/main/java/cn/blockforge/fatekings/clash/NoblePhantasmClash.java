@@ -63,7 +63,8 @@ public final class NoblePhantasmClash {
         ACTIVE.removeIf(b -> b.isRemoved() || b.state() != BeamEntity.ADVANCING);
         for (int i = 0; i < ACTIVE.size(); ++i) {
             for (int j = 0; j < ACTIVE.size(); ++j) {
-                if (!(ACTIVE.get(i) instanceof EnumaElishEntity ea) || !(ACTIVE.get(j) instanceof ExcaliburWaveEntity sword)) continue;
+                if (!(ACTIVE.get(i) instanceof EnumaElishEntity ea) || !(ACTIVE.get(j) instanceof ExcaliburWaveEntity sword)
+                    || sword.weapon() != cn.blockforge.fatekings.combat.JudgementRules.Weapon.EXCALIBUR) continue;
                 if (ea.level() != level || sword.level() != level || ea.state() != BeamEntity.ADVANCING || sword.state() != BeamEntity.ADVANCING) continue;
                 if (ea.ownerId() != null && ea.ownerId().equals(sword.ownerId())) continue;
                 Vec3 point = meeting(ea, sword);

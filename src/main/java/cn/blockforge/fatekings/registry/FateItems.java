@@ -1,6 +1,10 @@
 package cn.blockforge.fatekings.registry;
 
 import cn.blockforge.fatekings.FateKings;
+import cn.blockforge.fatekings.archer.BlackBowItem;
+import cn.blockforge.fatekings.archer.ExcaliburReplicaItem;
+import cn.blockforge.fatekings.archer.TwinSwordItem;
+import cn.blockforge.fatekings.archer.UnlimitedBladeWorksItem;
 import cn.blockforge.fatekings.hero.BabIluItem;
 import cn.blockforge.fatekings.hero.EaItem;
 import cn.blockforge.fatekings.hero.ElixirItem;
@@ -40,10 +44,14 @@ public final class FateItems {
     public static final ResourceKey<EquipmentAsset> GOLDEN_ASSET = ResourceKey.create(EquipmentAssets.ROOT_ID, FateKings.id("golden_regalia"));
     public static final ResourceKey<EquipmentAsset> KNIGHT_ASSET = ResourceKey.create(EquipmentAssets.ROOT_ID, FateKings.id("knight_regalia"));
     public static final ResourceKey<EquipmentAsset> BARDING_ASSET = ResourceKey.create(EquipmentAssets.ROOT_ID, FateKings.id("knight_barding"));
+    public static final ResourceKey<EquipmentAsset> SHROUD_ASSET = ResourceKey.create(EquipmentAssets.ROOT_ID, FateKings.id("red_shroud"));
+    /** Noble phantasms that are one of a kind: projection cannot copy them. */
+    public static final TagKey<Item> UNPROJECTABLE = TagKey.create(Registries.ITEM, FateKings.id("unprojectable"));
     private static final Map<ArmorType, Integer> DIAMOND_DEFENSE = Map.of(ArmorType.BOOTS, 3, ArmorType.LEGGINGS, 6, ArmorType.CHESTPLATE, 8, ArmorType.HELMET, 3, ArmorType.BODY, 11);
     public static final ArmorMaterial GOLDEN = new ArmorMaterial(37, DIAMOND_DEFENSE, 0, SoundEvents.ARMOR_EQUIP_GOLD, 2.0f, 0.0f, NO_REPAIR, GOLDEN_ASSET);
     public static final ArmorMaterial KNIGHT = new ArmorMaterial(37, DIAMOND_DEFENSE, 0, SoundEvents.ARMOR_EQUIP_IRON, 2.0f, 0.0f, NO_REPAIR, KNIGHT_ASSET);
     public static final ArmorMaterial BARDING = new ArmorMaterial(37, DIAMOND_DEFENSE, 0, SoundEvents.ARMOR_EQUIP_IRON, 2.0f, 0.0f, NO_REPAIR, BARDING_ASSET);
+    public static final ArmorMaterial SHROUD = new ArmorMaterial(37, DIAMOND_DEFENSE, 0, SoundEvents.ARMOR_EQUIP_LEATHER, 2.0f, 0.0f, NO_REPAIR, SHROUD_ASSET);
 
     // ---- King of Heroes ----
     public static final Item GOLDEN_CROWN = armor("golden_crown", GOLDEN, ArmorType.HELMET);
@@ -71,13 +79,33 @@ public final class FateItems {
     public static final Item KNIGHT_BARDING = register("knight_barding", Item::new, p -> p.stacksTo(1).rarity(Rarity.RARE)
         .horseArmor(BARDING).component(DataComponents.UNBREAKABLE, Unit.INSTANCE));
 
+    // ---- EMIYA (Archer): the Red Shroud of Martin ----
+    public static final Item SHROUD_HEADPIECE = armor("shroud_headpiece", SHROUD, ArmorType.HELMET);
+    public static final Item SHROUD_COAT = armor("shroud_coat", SHROUD, ArmorType.CHESTPLATE);
+    public static final Item SHROUD_LEGGINGS = armor("shroud_leggings", SHROUD, ArmorType.LEGGINGS);
+    public static final Item SHROUD_BOOTS = armor("shroud_boots", SHROUD, ArmorType.BOOTS);
+    public static final Item BLACK_BOW = register("black_bow", BlackBowItem::new, p -> p.stacksTo(1).rarity(Rarity.EPIC).fireResistant()
+        .component(DataComponents.UNBREAKABLE, Unit.INSTANCE));
+    public static final Item KANSHOU = register("kanshou", p -> new TwinSwordItem(p, true), p -> p.stacksTo(1).rarity(Rarity.EPIC).fireResistant()
+        .sword(net.minecraft.world.item.ToolMaterial.NETHERITE, 3.0f, -2.0f).component(DataComponents.UNBREAKABLE, Unit.INSTANCE));
+    public static final Item BAKUYA = register("bakuya", p -> new TwinSwordItem(p, false), p -> p.stacksTo(1).rarity(Rarity.EPIC).fireResistant()
+        .sword(net.minecraft.world.item.ToolMaterial.NETHERITE, 3.0f, -2.0f).component(DataComponents.UNBREAKABLE, Unit.INSTANCE));
+    public static final Item UNLIMITED_BLADE_WORKS = register("unlimited_blade_works", UnlimitedBladeWorksItem::new,
+        p -> p.stacksTo(1).rarity(Rarity.EPIC).fireResistant());
+    /** Only ever a projected copy: Excalibur as EMIYA can trace it. */
+    public static final Item EXCALIBUR_REPLICA = register("excalibur_replica", ExcaliburReplicaItem::new, p -> p.stacksTo(1).rarity(Rarity.RARE)
+        .fireResistant().sword(net.minecraft.world.item.ToolMaterial.DIAMOND, 3.0f, -2.4f).component(DataComponents.UNBREAKABLE, Unit.INSTANCE)
+        .component(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, false));
+
     // ---- NPCs and the admin item ----
     public static final Item GILGAMESH_SPAWN_EGG = register("gilgamesh_spawn_egg", SpawnEggItem::new, p -> p.spawnEgg(FateEntities.GILGAMESH));
     public static final Item ARTORIA_SPAWN_EGG = register("artoria_spawn_egg", SpawnEggItem::new, p -> p.spawnEgg(FateEntities.ARTORIA));
+    public static final Item EMIYA_SPAWN_EGG = register("emiya_spawn_egg", SpawnEggItem::new, p -> p.spawnEgg(FateEntities.EMIYA));
     public static final Item GRAIL_MUD = register("grail_mud", GrailMudItem::new, p -> p.stacksTo(1).rarity(Rarity.EPIC));
 
     public static final List<Item> HERO_SET = List.of(GOLDEN_CROWN, GOLDEN_CHESTPLATE, GOLDEN_GREAVES, GOLDEN_SABATONS);
     public static final List<Item> KNIGHT_SET = List.of(KNIGHT_RIBBON, KNIGHT_BREASTPLATE, KNIGHT_SKIRT, KNIGHT_BOOTS);
+    public static final List<Item> ARCHER_SET = List.of(SHROUD_HEADPIECE, SHROUD_COAT, SHROUD_LEGGINGS, SHROUD_BOOTS);
 
     public static final CreativeModeTab TAB = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, FateKings.id("main"),
         FabricCreativeModeTab.builder()
@@ -86,7 +114,8 @@ public final class FateItems {
             .displayItems((ctx, entries) -> {
                 for (Item item : List.of(GOLDEN_CROWN, GOLDEN_CHESTPLATE, GOLDEN_GREAVES, GOLDEN_SABATONS, GATE_OF_BABYLON, BAB_ILU,
                         ENKIDU, VIMANA, TREASURY_ELIXIR, KNIGHT_RIBBON, KNIGHT_BREASTPLATE, KNIGHT_SKIRT, KNIGHT_BOOTS, EXCALIBUR,
-                        WARHORSE, KNIGHT_BARDING, GILGAMESH_SPAWN_EGG, ARTORIA_SPAWN_EGG, GRAIL_MUD)) {
+                        WARHORSE, KNIGHT_BARDING, SHROUD_HEADPIECE, SHROUD_COAT, SHROUD_LEGGINGS, SHROUD_BOOTS, BLACK_BOW, KANSHOU, BAKUYA,
+                        UNLIMITED_BLADE_WORKS, GILGAMESH_SPAWN_EGG, ARTORIA_SPAWN_EGG, EMIYA_SPAWN_EGG, GRAIL_MUD)) {
                     entries.accept(new ItemStack(item));
                 }
             }).build());
@@ -113,6 +142,19 @@ public final class FateItems {
 
     public static boolean knightPiece(ItemStack stack) {
         return KNIGHT_SET.contains(stack.getItem());
+    }
+
+    public static boolean archerPiece(ItemStack stack) {
+        return ARCHER_SET.contains(stack.getItem());
+    }
+
+    /** A piece of any of the three sets. */
+    public static boolean regaliaPiece(ItemStack stack) {
+        return heroPiece(stack) || knightPiece(stack) || archerPiece(stack);
+    }
+
+    public static boolean twinSword(ItemStack stack) {
+        return stack.is(KANSHOU) || stack.is(BAKUYA);
     }
 
     public static void init() {

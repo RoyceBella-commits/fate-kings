@@ -14,6 +14,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class KeepRegaliaMixin {
     @Inject(method = "dropEquipment", at = @At("HEAD"))
     private void fatekings$keep(ServerLevel level, CallbackInfo ci) {
-        if ((Object)this instanceof ServerPlayer p) Regalia.stash(level, p);
+        if ((Object)this instanceof ServerPlayer p) {
+            // Projected copies never drop: they fade with their maker.
+            cn.blockforge.fatekings.archer.Projection.dissipateAll(p);
+            Regalia.stash(level, p);
+        }
     }
 }

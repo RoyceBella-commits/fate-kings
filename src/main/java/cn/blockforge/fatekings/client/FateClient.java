@@ -66,19 +66,49 @@ public final class FateClient {
         EntityRendererRegistry.register(FateEntities.SWORD_QI, cn.blockforge.fatekings.client.render.SwordQiRenderer::new);
         EntityRendererRegistry.register(FateEntities.GILGAMESH, ctx -> new KingNpcRenderer<>(ctx, ModelLayers.PLAYER, FateKings.id("textures/entity/gilgamesh.png")));
         EntityRendererRegistry.register(FateEntities.ARTORIA, ctx -> new KingNpcRenderer<>(ctx, ModelLayers.PLAYER_SLIM, FateKings.id("textures/entity/artoria.png")));
+        EntityRendererRegistry.register(FateEntities.EMIYA, ctx -> new KingNpcRenderer<>(ctx, ModelLayers.PLAYER, FateKings.id("textures/entity/emiya.png")));
+        EntityRendererRegistry.register(FateEntities.PROJECTED_ARROW, cn.blockforge.fatekings.client.render.ProjectedArrowRenderer::new);
+        EntityRendererRegistry.register(FateEntities.CALADBOLG, cn.blockforge.fatekings.client.render.CaladbolgRenderer::new);
+        EntityRendererRegistry.register(FateEntities.THROWN_BLADE, cn.blockforge.fatekings.client.render.ThrownBladeRenderer::new);
+        EntityRendererRegistry.register(FateEntities.UBW, cn.blockforge.fatekings.client.render.UbwRenderer::new);
+        EntityRendererRegistry.register(FateEntities.UBW_SWORD, cn.blockforge.fatekings.client.render.UbwSwordRenderer::new);
+        cn.blockforge.fatekings.archer.UnlimitedBladeWorksItem.clientOpenArsenal = () -> Minecraft.getInstance().gui.setScreen(new ArsenalScreen());
 
         receive(FateNet.S2C_STATE, ClientKingState::read);
         receive(FateNet.S2C_FX, WorldFx::receive);
         receive(FateNet.S2C_SIDES, FateHud::readSides);
         receive(FateNet.S2C_WARN, FateHud::readWarning);
-        receive(FateNet.S2C_SWING, buf -> ClientSwings.put(buf.readVarInt(), buf.readFloat()));
+        receive(FateNet.S2C_SWING, buf -> {
+            int id = buf.readVarInt();
+            float roll = buf.readFloat();
+            int style = buf.readableBytes() > 0 ? buf.readByte() : 0;
+            int step = buf.readableBytes() > 0 ? buf.readByte() : 0;
+            ClientSwings.put(id, style, roll, step);
+        });
+        ClientPlayNetworking.registerGlobalReceiver(FateNet.type(FateNet.S2C_ARSENAL), (payload, context) -> {
+            byte[] data = payload.data();
+            context.client().execute(() -> {
+                if (context.client().level == null) return;
+                var buf = new net.minecraft.network.RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(data), context.client().level.registryAccess());
+                try {
+                    ClientArsenal.read(buf);
+                } finally {
+                    buf.release();
+                }
+            });
+        });
+        net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> projectedTooltip(stack, lines));
+        UbwClient.init();
 
         FateHud.init();
         WorldFx.init();
         ClientTickEvents.START_CLIENT_TICK.register(FateClient::leapInput);
         ClientTickEvents.END_CLIENT_TICK.register(FateClient::leapGlide);
         ClientTickEvents.END_CLIENT_TICK.register(SlashInput::tick);
-        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((h, c) -> ClientSwings.clear());
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((h, c) -> {
+            ClientSwings.clear();
+            ClientArsenal.reset();
+        });
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(ClientCommands.literal("fateclient")
             .then(option("hud", "hudVisible"))
             .then(option("lowfx", "lowFx"))
@@ -93,6 +123,18 @@ public final class FateClient {
             ctx.getSource().sendFeedback(Component.translatable("fatekings.cmd.client_option", name, String.valueOf(on)));
             return 1;
         }));
+    }
+
+    /** A projected copy says how long it has left. */
+    private static void projectedTooltip(net.minecraft.world.item.ItemStack stack, java.util.List<Component> lines) {
+        if (!cn.blockforge.fatekings.archer.Projection.projected(stack)) return;
+        var level = Minecraft.getInstance().level;
+        if (cn.blockforge.fatekings.archer.Projection.partner(stack)) {
+            lines.add(Component.translatable("fatekings.tooltip.partner").withStyle(net.minecraft.ChatFormatting.AQUA));
+        } else if (level != null) {
+            long left = Math.max(0L, cn.blockforge.fatekings.archer.Projection.expireAt(stack) - level.getGameTime()) / 20L;
+            lines.add(Component.translatable("fatekings.tooltip.projected", left).withStyle(net.minecraft.ChatFormatting.AQUA));
+        }
     }
 
     private interface Reader {

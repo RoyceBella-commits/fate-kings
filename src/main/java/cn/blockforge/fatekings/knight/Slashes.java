@@ -64,12 +64,6 @@ public final class Slashes {
     }
 
     private static void broadcast(ServerLevel level, LivingEntity e, float roll) {
-        for (ServerPlayer p : level.players()) {
-            if (p == e || p.distanceToSqr(e) > 64.0 * 64.0) continue;
-            var buf = FateNet.buffer();
-            buf.writeVarInt(e.getId());
-            buf.writeFloat(roll);
-            FateNet.send(p, FateNet.S2C_SWING, buf);
-        }
+        cn.blockforge.fatekings.archer.TwinBlades.broadcast(level, e, cn.blockforge.fatekings.archer.TwinBlades.STYLE_EXCALIBUR, roll, 0, true);
     }
 }

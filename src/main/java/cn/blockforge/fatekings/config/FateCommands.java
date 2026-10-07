@@ -1,5 +1,11 @@
 package cn.blockforge.fatekings.config;
 
+import cn.blockforge.fatekings.archer.ArcherBow;
+import cn.blockforge.fatekings.archer.ArcherRules;
+import cn.blockforge.fatekings.archer.CraneWing;
+import cn.blockforge.fatekings.archer.ExcaliburReplicaItem;
+import cn.blockforge.fatekings.archer.RhoAias;
+import cn.blockforge.fatekings.archer.UnlimitedBladeWorks;
 import cn.blockforge.fatekings.combat.Terrain;
 import cn.blockforge.fatekings.compat.JjkCompat;
 import cn.blockforge.fatekings.hero.EaItem;
@@ -32,7 +38,8 @@ import net.minecraft.world.entity.LivingEntity;
  */
 public final class FateCommands {
     private static final String[] CASTS = {"gob_tap", "gob_volley", "gob_ring", "bab_ilu", "enuma_elish", "enkidu_hook", "enkidu_bind",
-        "strike_air", "mana_burst", "excalibur", "avalon", "leap"};
+        "strike_air", "mana_burst", "excalibur", "avalon", "leap",
+        "bow_tap", "caladbolg", "rho_aias", "twin_throw", "crane_wing", "ubw", "excalibur_replica"};
 
     private FateCommands() {
     }
@@ -118,6 +125,13 @@ public final class FateCommands {
                 KnightLeap.leap(caster, 0.0f, 0.0f, caster.onGround());
                 yield true;
             }
+            case "bow_tap" -> ArcherBow.tap(caster);
+            case "caladbolg" -> ArcherBow.caladbolg(caster, null);
+            case "rho_aias" -> RhoAias.cast(caster);
+            case "twin_throw" -> CraneWing.throwPair(caster);
+            case "crane_wing" -> CraneWing.start(caster);
+            case "ubw" -> UnlimitedBladeWorks.mayChant(caster) && UnlimitedBladeWorks.unfold(caster);
+            case "excalibur_replica" -> ExcaliburReplicaItem.release(caster, Math.max(ArcherRules.REPLICA_CHARGE, ticks), null);
             default -> false;
         };
         if (!ok) {

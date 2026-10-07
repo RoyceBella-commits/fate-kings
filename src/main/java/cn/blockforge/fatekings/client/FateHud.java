@@ -147,7 +147,7 @@ public final class FateHud {
         screenEffects(ctx, mc, sw, sh, partial);
         if (mc.gui.hud.isHidden()) return;
         renderTitle(ctx, mc, sw, sh);
-        if (ClientKingState.king == KingRules.HERO) targetPanel(ctx, mc, sw, sh);
+        if (ClientKingState.king == KingRules.HERO || ClientKingState.king == KingRules.ARCHER) targetPanel(ctx, mc, sw, sh);
         if (ClientKingState.king == KingRules.KNIGHT) warnings(ctx, mc, sw, sh, partial);
         if (ClientKingState.king != KingRules.NONE && FateClient.prefs().hudVisible() && mc.gui.screen() == null) panel(ctx, mc, sw, sh);
         else if (ClientKingState.lockLeft > 0 && ClientKingState.left(ClientKingState.lockLeft) > 0) {
@@ -160,6 +160,8 @@ public final class FateHud {
         ClientPrefs prefs = FateClient.prefs();
         float dim = prefs.lowFx() ? 0.0f : WorldFx.skyDim(mc.level, partial);
         if (dim > 0.01f) ctx.fill(0, 0, sw, sh, FxDraw.alpha(dim * 0.55f, 0x05030A));
+        float marble = prefs.lowFx() ? 0.0f : UbwClient.inside();
+        if (marble > 0.01f) ctx.fillGradient(0, 0, sw, sh / 2, FxDraw.alpha(0.16f * marble, 0xFF7A2A), FxDraw.alpha(0.0f, 0xFF7A2A));
         WorldFx.Event split = WorldFx.latest(Fx.SKY_SPLIT);
         if (split != null && !prefs.lowFx() && split.progress(mc.level, partial) < 1.0f) {
             float a = 0.22f * Math.min(1.0f, (1.0f - split.progress(mc.level, partial)) * 4.0f);
@@ -194,15 +196,24 @@ public final class FateHud {
     }
 
     private static void panel(GuiGraphicsExtractor ctx, Minecraft mc, int sw, int sh) {
-        boolean hero = ClientKingState.king == KingRules.HERO;
-        int accent = hero ? 0xFFFFD34A : 0xFF7FB2FF;
-        String[] rows = hero ? Skills.HERO_HUD : Skills.KNIGHT_HUD;
+        int king = ClientKingState.king;
+        boolean hero = king == KingRules.HERO, knight = king == KingRules.KNIGHT, archer = king == KingRules.ARCHER;
+        int accent = hero ? 0xFFFFD34A : archer ? 0xFFFF6A4A : 0xFF7FB2FF;
+        String[] rows = Skills.hud(king);
+        String title = hero ? "fatekings.hud.hero" : archer ? "fatekings.hud.archer" : "fatekings.hud.knight";
         List<Component> extra = new ArrayList<>();
         if (hero && ClientKingState.left(ClientKingState.reorgLeft) > 0) extra.add(window("fatekings.hud.reorg", ClientKingState.reorgLeft));
-        if (!hero && ClientKingState.left(ClientKingState.depletionLeft) > 0) extra.add(window("fatekings.hud.depletion", ClientKingState.depletionLeft));
-        if (!hero && ClientKingState.left(ClientKingState.counterLeft) > 0) extra.add(window("fatekings.hud.counter", ClientKingState.counterLeft));
-        if (!hero && ClientKingState.left(ClientKingState.domeLeft) > 0) extra.add(window("fatekings.hud.dome", ClientKingState.domeLeft));
-        if (!hero && ClientKingState.left(ClientKingState.regenPausedLeft) > 0) extra.add(window("fatekings.hud.regen_paused", ClientKingState.regenPausedLeft));
+        if (knight && ClientKingState.left(ClientKingState.depletionLeft) > 0) extra.add(window("fatekings.hud.depletion", ClientKingState.depletionLeft));
+        if (knight && ClientKingState.left(ClientKingState.counterLeft) > 0) extra.add(window("fatekings.hud.counter", ClientKingState.counterLeft));
+        if (knight && ClientKingState.left(ClientKingState.domeLeft) > 0) extra.add(window("fatekings.hud.dome", ClientKingState.domeLeft));
+        if (knight && ClientKingState.left(ClientKingState.regenPausedLeft) > 0) extra.add(window("fatekings.hud.regen_paused", ClientKingState.regenPausedLeft));
+        if (archer && ClientKingState.left(ClientKingState.ubwLeft) > 0) extra.add(window("fatekings.hud.ubw", ClientKingState.ubwLeft));
+        if (archer && ClientKingState.left(ClientKingState.rhoLeft) > 0) {
+            extra.add(Component.translatable("fatekings.hud.rho_aias", ClientKingState.rhoPetals,
+                String.format(Locale.ROOT, "%.1f", ClientKingState.left(ClientKingState.rhoLeft) / 20.0f)));
+        }
+        if (archer && ClientKingState.projected > 0) extra.add(Component.translatable("fatekings.hud.projections", ClientKingState.projected,
+            cn.blockforge.fatekings.archer.ArcherRules.PROJECTION_MAX));
         int width = 150;
         int height = 18 + rows.length * 10 + extra.size() * 10 + 4;
         int x = sw - width - 6;
@@ -210,7 +221,7 @@ public final class FateHud {
         ctx.fill(x, y, x + width, y + height, 0xC80E0B15);
         ctx.fill(x, y, x + width, y + 1, accent);
         ctx.fill(x, y + 1, x + 2, y + height - 1, accent & 0x90FFFFFF);
-        ctx.text(mc.font, Component.translatable(hero ? "fatekings.hud.hero" : "fatekings.hud.knight"), x + 7, y + 5, accent);
+        ctx.text(mc.font, Component.translatable(title), x + 7, y + 5, accent);
         int ry = y + 18;
         for (String key : rows) {
             float left = ClientKingState.cooldown(key);
@@ -262,6 +273,7 @@ public final class FateHud {
         if (e instanceof Player) return PLAYER_SIDES.getOrDefault(e.getId(), Side.PLAYER);
         if (e instanceof GilgameshEntity) return Side.HERO;
         if (e instanceof ArtoriaEntity) return Side.KNIGHT;
+        if (e instanceof cn.blockforge.fatekings.npc.EmiyaEntity) return Side.ARCHER;
         if (JjkCompat.is(e, JjkCompat.GOJO)) return Side.GOJO;
         if (JjkCompat.is(e, JjkCompat.SUKUNA)) return Side.SUKUNA;
         if (JjkCompat.is(e, JjkCompat.MAHORAGA)) return Side.MAHORAGA;
@@ -279,6 +291,7 @@ public final class FateHud {
             case SUKUNA, MAHORAGA -> 0xFFE0303F;
             case HERO -> 0xFFFFD34A;
             case KNIGHT -> 0xFF7FB2FF;
+            case ARCHER -> 0xFFFF6A4A;
             case VANILLA_BOSS -> 0xFFD080FF;
             default -> 0xFFB8B8B8;
         };

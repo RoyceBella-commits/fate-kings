@@ -1194,6 +1194,424 @@ def mod_icon():
 
 
 # ---------------------------------------------------------------------------------------------
+# EMIYA (Archer): the Red Shroud, the black bow, Kanshou & Bakuya, Unlimited Blade Works
+# ---------------------------------------------------------------------------------------------
+
+SHROUD = C("B3141C")
+SHROUD_HI = C("E0303A")
+SHROUD_DK = C("6E0A10")
+ARMOR_BLACK = C("1E1E24")
+ARMOR_GREY = C("3A3A44")
+ARMOR_LINE = C("0E0E12")
+TRIM = C("B8BCC8")
+WHITE_HAIR = C("ECECF0")
+WHITE_HAIR_DK = C("B8B8C2")
+TAN = C("B07A55")
+TAN_DK = C("8E5E40")
+KAN = C("1A1A1E")
+KAN_HI = C("4A4A54")
+KAN_RED = C("C02020")
+BAK = C("F0F2F6")
+BAK_DK = C("A8B0C0")
+BAK_BLUE = C("5A78B0")
+BRONZE = C("B87A3A")
+BRONZE_HI = C("E0A860")
+BRONZE_DK = C("6A4018")
+
+
+def bezier(p0, p1, p2, t):
+    u = 1 - t
+    return (u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0], u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1])
+
+
+def black_bow(pull=0, arrow=None):
+    """The black bow: limbs bowed to the top left, a grip wrapped in red; drawn to the bottom right as it pulls."""
+    img = new(16, 16)
+    p0, p1, p2 = (3, 14), (0, 0), (14, 3)
+    for i in range(40):
+        x, y = bezier(p0, p1, p2, i / 39)
+        mid = abs(i / 39 - 0.5) < 0.12
+        put(img, int(round(x)), int(round(y)), KAN_RED if mid else (KAN_HI if i % 7 == 0 else KAN))
+    q = (8.5 + pull * 1.6, 8.5 + pull * 1.6)
+    for a, b in ((p0, q), (q, p2)):
+        for i in range(24):
+            x = a[0] + (b[0] - a[0]) * i / 23
+            y = a[1] + (b[1] - a[1]) * i / 23
+            if img.getpixel((int(round(x)), int(round(y))))[3] == 0:
+                put(img, int(round(x)), int(round(y)), C("D8D8E0"))
+    if arrow == "sword":
+        for d in range(-3, 9):
+            put(img, *diag(int(q[0] + q[1]) - 1, d), C("C8CCD8") if d < 7 else C("F4F6FF"))
+    elif arrow == "drill":
+        for k, d in enumerate(range(-3, 11)):
+            x, y = diag(int(q[0] + q[1]) - 1, d)
+            put(img, x, y, C("E8302A") if k % 2 else C("FFF0E8"))
+            if d > 5:
+                put(img, x + 1, y, C("E8302A") if k % 2 == 0 else C("FFF0E8"))
+    outline(img, ARMOR_LINE)
+    return img
+
+
+def twin_sword(black):
+    """Kanshou (black, red hexagons) or Bakuya (white, blue hexagons): a broad curved blade, a short grip."""
+    img = new(16, 16)
+    blade, hi, mark = (KAN, KAN_HI, KAN_RED) if black else (BAK, C("FFFFFF"), BAK_BLUE)
+    for d in range(-2, 13, 2):
+        put(img, *diag(15, d), hi if d > 9 else blade)
+        put(img, *diag(16, d + 1), blade)
+        if -1 < d < 10:
+            put(img, *diag(14, d + 1), blade if black else BAK_DK)
+    for d in (1, 5, 9):
+        put(img, *diag(15, d), mark)
+    # Guard: a small taiji-like disc, then the wrapped grip.
+    for s in range(13, 19):
+        put(img, *diag(s, -4), C("2A2A30") if black else C("C8CCD8"))
+    for s, d in ((16, -6), (15, -7), (16, -8)):
+        put(img, *diag(s, d), KAN_RED if black else C("2A2A30"))
+    put(img, *diag(15, -9), C("8A7A50"))
+    outline(img, ARMOR_LINE if black else C("4A5060"))
+    return img
+
+
+def sword_arrow():
+    img = new(16, 16)
+    for d in range(-9, 13):
+        put(img, *diag(15, d), C("F4F6FF") if d > 9 else C("C8CCD8"))
+    for s in (14, 16):
+        put(img, *diag(s, -5), C("8A8E9A"))
+    outline(img, C("3A3A44"))
+    return img
+
+
+def caladbolg_arrow():
+    """The fake spiral sword: a long drill twisted red and white, widening behind its point."""
+    img = new(16, 16)
+    for k, d in enumerate(range(-9, 13)):
+        x, y = diag(15, d)
+        put(img, x, y, C("E8302A") if (k // 2) % 2 else C("FFF0E8"))
+        if -6 < d < 8:
+            x2, y2 = diag(16 + (k % 2) * -2, d)
+            put(img, x2, y2, C("FFF0E8") if (k // 2) % 2 else C("B81A1A"))
+    outline(img, C("3A0A0A"))
+    return img
+
+
+def ubw_icon():
+    """A sword standing in the hill before a bronze gear, embers at its foot."""
+    img = new(16, 16)
+    for y in range(16):
+        for x in range(16):
+            r = math.hypot(x - 7.5, y - 6.5)
+            ang = math.atan2(y - 6.5, x - 7.5)
+            teeth = 6.0 + (0.9 if math.cos(ang * 8) > 0.3 else 0.0)
+            if 2.6 < r < teeth:
+                put(img, x, y, BRONZE_HI if (x + y) % 5 == 0 else (BRONZE if r < 5.5 else BRONZE_DK))
+    for y in range(1, 13):
+        put(img, 7, y, C("F4F6FF") if y < 4 else C("C8CCD8"))
+        put(img, 8, y, C("8A8E9A"))
+    for x in range(5, 11):
+        put(img, x, 10, C("2A2A30"))
+    for x in range(2, 14):
+        put(img, x, 13, SHROUD_DK)
+        put(img, x, 14, C("5A1010"))
+    for p in ((4, 12), (11, 12), (6, 11)):
+        put(img, *p, C("FF8A2A"))
+    outline(img, ARMOR_LINE)
+    return img
+
+
+def shroud_icon(kind):
+    img = new(16, 16)
+    if kind == "shroud_headpiece":
+        # Swept-back white hair with a dark band.
+        for y in range(4, 12):
+            for x in range(3, 13):
+                if (x - 7.5) ** 2 / 25 + (y - 8.5) ** 2 / 14 <= 1:
+                    put(img, x, y, WHITE_HAIR if (x + y) % 3 else WHITE_HAIR_DK)
+        for p in ((4, 3), (6, 2), (8, 2), (10, 3), (12, 4), (5, 4), (9, 3)):
+            put(img, *p, WHITE_HAIR)
+        for x in range(3, 13):
+            put(img, x, 10, ARMOR_BLACK)
+    elif kind == "shroud_coat":
+        rows = ["..XX......XX..", ".XXXX....XXXX.", "XXXXXXXXXXXXXX", "XXXXXXXXXXXXXX", ".XXXXXXXXXXXX.",
+                "..XXXXXXXXXX..", "..XXXXXXXXXX..", "..XXXXXXXXXX..", "..XXXXXXXXXX..", "..XXXXXXXXXX..", "..XX......XX.."]
+        for y, row in enumerate(rows):
+            for x, ch in enumerate(row):
+                if ch != "X":
+                    continue
+                c = SHROUD if not (4 <= x <= 9 and y >= 2) else (ARMOR_BLACK if (x + y) % 4 else ARMOR_GREY)
+                if 4 <= x <= 9 and y in (4, 7):
+                    c = TRIM
+                if x in (0, 1) and y >= 2:
+                    c = SHROUD_HI
+                put(img, x + 1, y + 3, c)
+    elif kind == "shroud_leggings":
+        for y in range(3, 14):
+            for x in range(3, 13):
+                if y > 6 and 7 <= x <= 8:
+                    continue
+                put(img, x, y, ARMOR_BLACK if x < 10 else ARMOR_GREY)
+        for x in range(3, 13):
+            put(img, x, 3, TRIM)
+        for y in range(4, 11):
+            put(img, 2, y, SHROUD)
+            put(img, 13, y, SHROUD_DK)
+    else:  # boots
+        for side in (0, 1):
+            ox = 2 + side * 7
+            for y in range(5, 13):
+                for x in range(ox, ox + 4):
+                    put(img, x, y, ARMOR_BLACK if x < ox + 3 else ARMOR_GREY)
+            for x in range(ox, ox + 5):
+                put(img, x, 12, ARMOR_GREY)
+                put(img, x, 13, ARMOR_BLACK)
+            put(img, ox, 8, TRIM)
+            put(img, ox + 1, 8, TRIM)
+    outline(img, ARMOR_LINE)
+    return img
+
+
+def archer_armor():
+    mask, size = vanilla_mask("assets/minecraft/textures/entity/equipment/humanoid/gold.png")
+
+    def painter(x, y):
+        f = face_of(x, y, HEAD)
+        if f:
+            name, u, v, w, h = f
+            if name == "top":
+                return WHITE_HAIR if (u * 2 + v) % 5 else WHITE_HAIR_DK
+            if name == "front":
+                if v == 0:
+                    return WHITE_HAIR if u % 2 == 0 else WHITE_HAIR_DK  # swept-back fringe
+                return None
+            if v <= 3 or name == "back":
+                return WHITE_HAIR if (u + v) % 3 else WHITE_HAIR_DK
+            return None
+        f = face_of(x, y, BODY)
+        if f:
+            name, u, v, w, h = f
+            if name == "front":
+                if u in (0, w - 1):
+                    return SHROUD  # the coat open at the front
+                if v in (2, 6):
+                    return TRIM
+                return ARMOR_BLACK if (u + v) % 4 else ARMOR_GREY
+            return SHROUD if (u + v) % 4 else SHROUD_HI
+        f = face_of(x, y, ARM)
+        if f:
+            name, u, v, w, h = f
+            if v <= 6:
+                return SHROUD if (u + v) % 3 else SHROUD_HI  # the red sleeves
+            if v == 7:
+                return TRIM
+            return ARMOR_BLACK if (u + v) % 3 else ARMOR_GREY
+        f = face_of(x, y, LEG)
+        if f:
+            name, u, v, w, h = f
+            if v == 7:
+                return TRIM
+            return ARMOR_BLACK if v < 11 else ARMOR_LINE
+        return ARMOR_BLACK
+
+    return paint_masked(size, mask, painter)
+
+
+def archer_leggings():
+    mask, size = vanilla_mask("assets/minecraft/textures/entity/equipment/humanoid_leggings/gold.png")
+
+    def painter(x, y):
+        f = face_of(x, y, BODY)
+        if f:
+            name, u, v, w, h = f
+            if v == 6:
+                return TRIM if name == "front" and u in (3, 4) else ARMOR_GREY  # belt and buckle
+            if name in ("back", "left", "right") and v >= 7:
+                return SHROUD if (u + v) % 3 else SHROUD_DK  # the coat's tails
+            return ARMOR_BLACK
+        f = face_of(x, y, LEG)
+        if f:
+            name, u, v, w, h = f
+            if name == "back" and v <= 7:
+                return SHROUD if (u + v) % 3 else SHROUD_DK
+            return ARMOR_BLACK if (u + v) % 5 else ARMOR_GREY
+        return ARMOR_BLACK
+
+    return paint_masked(size, mask, painter)
+
+
+def emiya_skin():
+    img = new(64, 64)
+
+    def head_p(n, u, v, w, h):
+        if n == "top":
+            return WHITE_HAIR if (u + v) % 3 else WHITE_HAIR_DK
+        if n == "front":
+            if v == 0 or (v == 1 and u in (0, 2, 5, 7)):
+                return WHITE_HAIR
+            if v == 4 and u in (1, 2, 5, 6):
+                return C("E8E8EC") if u in (1, 6) else C("6A6E7A")  # steel-grey eyes
+            if v == 3 and u in (1, 2, 5, 6):
+                return TAN_DK  # a frown
+            if v == 6 and 3 <= u <= 4:
+                return C("7A4A34")
+            return TAN
+        if n in ("left", "right"):
+            return WHITE_HAIR if v < 3 or (n == "left" and u > 5) or (n == "right" and u < 2) else TAN
+        if n == "back":
+            return WHITE_HAIR if (u + v) % 3 else WHITE_HAIR_DK
+        return TAN
+
+    fill_faces(img, skin_faces(0, 0, 8, 8, 8), head_p)
+
+    def hat_p(n, u, v, w, h):
+        # The white hair swept back and up in spikes.
+        if n == "top":
+            return WHITE_HAIR if (u + 2 * v) % 3 else (WHITE_HAIR_DK if (u * v) % 2 else None)
+        if n == "front":
+            return WHITE_HAIR if v == 0 and u % 2 == 1 else None
+        if n in ("left", "right", "back"):
+            if v <= 2:
+                return WHITE_HAIR if (u + v) % 2 == 0 else WHITE_HAIR_DK
+            return None
+        return None
+
+    fill_faces(img, skin_faces(32, 0, 8, 8, 8), hat_p)
+
+    def body_p(n, u, v, w, h):
+        if n == "front":
+            if u in (0, w - 1):
+                return SHROUD
+            if v in (2, 6):
+                return TRIM
+            if v >= 9:
+                return ARMOR_GREY if v == 9 else ARMOR_BLACK  # belt
+            return ARMOR_BLACK if (u + v) % 4 else ARMOR_GREY
+        return SHROUD if (u + v) % 4 else SHROUD_HI
+
+    fill_faces(img, skin_faces(16, 16, 8, 12, 4), body_p)
+
+    def jacket_p(n, u, v, w, h):
+        # The coat's overlay: its open front edges and the long tails at the back.
+        if n == "front" and u in (0, w - 1):
+            return SHROUD_HI
+        if n in ("back", "left", "right"):
+            return SHROUD if (u + v) % 3 else SHROUD_DK
+        return None
+
+    fill_faces(img, skin_faces(16, 32, 8, 12, 4), jacket_p)
+
+    def arm_p(n, u, v, w, h):
+        if v < 6:
+            return SHROUD if (u + v) % 3 else SHROUD_HI
+        if v == 6:
+            return TRIM
+        if v >= 10:
+            return TAN if n == "bottom" else ARMOR_BLACK
+        return ARMOR_BLACK if (u + v) % 3 else ARMOR_GREY
+
+    fill_faces(img, skin_faces(40, 16, 4, 12, 4), arm_p)
+    fill_faces(img, skin_faces(32, 48, 4, 12, 4), arm_p)
+
+    def sleeve_p(n, u, v, w, h):
+        if v < 5 and n != "bottom":
+            return SHROUD if (u + v) % 2 else SHROUD_DK
+        return None
+
+    fill_faces(img, skin_faces(40, 32, 4, 12, 4), sleeve_p)
+    fill_faces(img, skin_faces(48, 48, 4, 12, 4), sleeve_p)
+
+    def leg_p(n, u, v, w, h):
+        if v == 8:
+            return TRIM
+        if v > 8:
+            return ARMOR_LINE if v >= 11 else ARMOR_BLACK
+        return ARMOR_BLACK if (u + v) % 4 else ARMOR_GREY
+
+    fill_faces(img, skin_faces(0, 16, 4, 12, 4), leg_p)
+    fill_faces(img, skin_faces(16, 48, 4, 12, 4), leg_p)
+
+    def tails_p(n, u, v, w, h):
+        if n == "back" and v <= 8:
+            return SHROUD if (u + v) % 3 else SHROUD_DK
+        if n in ("left", "right") and v <= 4:
+            return SHROUD_DK
+        return None
+
+    fill_faces(img, skin_faces(0, 32, 4, 12, 4), tails_p)
+    fill_faces(img, skin_faces(0, 48, 4, 12, 4), tails_p)
+    return img
+
+
+def rho_aias_petal():
+    """One petal of the seven rings: a rounded leaf of pink-violet light with a bright rim."""
+    n = 64
+    img = new(n, n)
+    for y in range(n):
+        for x in range(n):
+            dx, dy = (x - 31.5) / 31.5, (y - 31.5) / 31.5
+            r = (dx / 0.62) ** 2 + (dy / 0.98) ** 2
+            if r > 1.0:
+                continue
+            rim = r > 0.78
+            vein = abs(dx) < 0.04
+            c = C("FFFFFF") if rim else (C("FFE0F4") if vein else mix(C("FF9AD8"), C("C8A0FF"), (dy + 1) / 2))
+            put(img, x, y, with_alpha(c, 240 if rim else int(150 + 60 * (1 - r))))
+    return img
+
+
+def twin_trail():
+    img = new(64, 16)
+    for y in range(16):
+        a = max(0.0, 1.0 - abs(y - 7.5) / 8.0) ** 1.5
+        for x in range(64):
+            put(img, x, y, with_alpha(C("FFFFFF"), int(255 * a)))
+    return img
+
+
+def ubw_sky():
+    """The marble's sky, top to bottom: hazy amber, a burning horizon, the dark red wasteland beyond the wall."""
+    w, h = 256, 128
+    img = new(w, h)
+    rnd = random.Random(42)
+    streaks = [(rnd.uniform(0.1, 0.45), rnd.uniform(0.004, 0.012), rnd.uniform(0, math.tau)) for _ in range(14)]
+    for y in range(h):
+        v = y / (h - 1)
+        if v < 0.55:
+            base = mix(C("F2B05A"), C("E2622A"), (v / 0.55) ** 1.4)
+        elif v < 0.62:
+            base = mix(C("E2622A"), C("8A1A10"), (v - 0.55) / 0.07)
+        else:
+            base = mix(C("8A1A10"), C("3A0A08"), min(1.0, (v - 0.62) / 0.38))
+        for x in range(w):
+            c = base
+            for sv, sw, ph in streaks:
+                d = abs(v - sv - 0.01 * math.sin(x / w * math.tau * 2 + ph))
+                if d < sw:
+                    c = mix(c, C("6A2A1A"), 0.35 * (1 - d / sw))
+            put(img, x, y, with_alpha(c, 255))
+    return img
+
+
+def ubw_gear():
+    n = 128
+    img = new(n, n)
+    for y in range(n):
+        for x in range(n):
+            dx, dy = x - 63.5, y - 63.5
+            r = math.hypot(dx, dy)
+            ang = math.atan2(dy, dx)
+            outer = 52 + (9 if math.cos(ang * 16) > 0.2 else 0)
+            spoke = any(abs(((ang - k * math.pi / 3 + math.pi) % math.tau) - math.pi) * r < 4 for k in range(6))
+            inside = r <= outer and (r >= 40 or 14 <= r <= 22 or spoke and r < 40)
+            if not inside:
+                continue
+            edge = r > outer - 2 or 38 < r < 40 or 14 <= r <= 15
+            c = BRONZE_DK if edge else (BRONZE_HI if (int(dx) + int(dy)) % 9 == 0 else BRONZE)
+            put(img, x, y, with_alpha(c, 235))
+    return img
+
+
+# ---------------------------------------------------------------------------------------------
 
 def preview(items, dest):
     """Items at 16x on snow-like and nether-like backgrounds (design doc 10.8 check)."""
@@ -1241,6 +1659,27 @@ def main():
     save(gil_skin(), "entity/gilgamesh.png")
     save(saber_skin(), "entity/artoria.png")
 
+    # EMIYA
+    items["black_bow"] = save(black_bow(), "item/black_bow.png")
+    save(black_bow(1), "item/black_bow_pulling_0.png")
+    save(black_bow(2, "sword"), "item/black_bow_pulling_1.png")
+    save(black_bow(2, "drill"), "item/black_bow_caladbolg.png")
+    items["kanshou"] = save(twin_sword(True), "item/kanshou.png")
+    items["bakuya"] = save(twin_sword(False), "item/bakuya.png")
+    items["unlimited_blade_works"] = save(ubw_icon(), "item/unlimited_blade_works.png")
+    save(sword_arrow(), "item/sword_arrow.png")
+    items["caladbolg_arrow"] = save(caladbolg_arrow(), "item/caladbolg_arrow.png")
+    for kind in ("shroud_headpiece", "shroud_coat", "shroud_leggings", "shroud_boots"):
+        items[kind] = save(shroud_icon(kind), f"item/{kind}.png")
+    items["emiya_spawn_egg"] = save(spawn_egg(C("B3141C"), C("6E0A10"), [ARMOR_BLACK, WHITE_HAIR], 3), "item/emiya_spawn_egg.png")
+    save(archer_armor(), "entity/equipment/humanoid/red_shroud.png")
+    save(archer_leggings(), "entity/equipment/humanoid_leggings/red_shroud.png")
+    save(emiya_skin(), "entity/emiya.png")
+    save(rho_aias_petal(), "misc/rho_aias_petal.png")
+    save(twin_trail(), "misc/twin_trail.png")
+    save(ubw_sky(), "misc/ubw_sky.png")
+    save(ubw_gear(), "misc/ubw_gear.png")
+
     save(gate_ripple(), "misc/gate_ripple.png")
     save(labyrinth(), "misc/labyrinth.png")
     save(chain_link(), "misc/chain_link.png")
@@ -1253,12 +1692,15 @@ def main():
     if prev:
         prev.mkdir(parents=True, exist_ok=True)
         preview(list(items.items())[:13], prev / "items_a.png")
-        preview(list(items.items())[13:], prev / "items_b.png")
+        preview(list(items.items())[13:26], prev / "items_b.png")
+        preview(list(items.items())[26:], prev / "items_c.png")
         preview([(f"air{i}", f) for i, f in enumerate(air)], prev / "excalibur_air_frames.png")
         preview([(f"rel{i}", f) for i, f in enumerate(rel)], prev / "excalibur_release_frames.png")
         for rel_path in ("entity/equipment/humanoid/golden_regalia.png", "entity/equipment/humanoid_leggings/golden_regalia.png",
                          "entity/equipment/humanoid/knight_regalia.png", "entity/equipment/humanoid_leggings/knight_regalia.png",
-                         "entity/gilgamesh.png", "entity/artoria.png", "entity/equipment/horse_body/knight_barding.png"):
+                         "entity/gilgamesh.png", "entity/artoria.png", "entity/equipment/horse_body/knight_barding.png",
+                         "entity/equipment/humanoid/red_shroud.png", "entity/equipment/humanoid_leggings/red_shroud.png", "entity/emiya.png",
+                         "misc/ubw_sky.png", "misc/ubw_gear.png", "misc/rho_aias_petal.png"):
             im = Image.open(TEX / rel_path)
             big = Image.new("RGBA", (im.width * 8, im.height * 8), (60, 60, 70, 255))
             big.alpha_composite(im.resize((im.width * 8, im.height * 8), Image.NEAREST))

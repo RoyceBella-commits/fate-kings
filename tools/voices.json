@@ -223,5 +223,131 @@
   "zh": "不违背骑士的誓言。",
   "url": "https://media.fgo.wiki/9/94/002di_btf2.mp3",
   "page": "https://fgo.wiki/w/阿尔托莉雅·潘德拉贡/语音"
+ },
+ {
+  "id": "emiya_spawn",
+  "character": "emiya",
+  "label": "召唤",
+  "ja": "サーヴァント・アーチャー。召喚に応じ参上した。",
+  "zh": "从者Archer。回应召唤前来报到。",
+  "url": "https://media.fgo.wiki/a/a9/011di_sum.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_start",
+  "character": "emiya",
+  "label": "开始 1",
+  "ja": "懲りない連中だ。",
+  "zh": "真是不吸取教训的家伙。",
+  "url": "https://media.fgo.wiki/0/00/011di_btst1.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_full_power",
+  "character": "emiya",
+  "label": "开始 2",
+  "ja": "全霊でお相手しよう。",
+  "zh": "我会全力与你对抗。",
+  "url": "https://media.fgo.wiki/8/87/011di_btst2.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_head_on",
+  "character": "emiya",
+  "label": "开始 3",
+  "ja": "正面から？ フッ、勘弁してくれ",
+  "zh": "从正面上？　哼，放过我吧。",
+  "url": "https://media.fgo.wiki/e/ec/SV11_0_%E5%BC%80%E5%A7%8B3.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_trace_on",
+  "character": "emiya",
+  "label": "技能 2",
+  "ja": "投影、開始（トレース・オン）",
+  "zh": "投影，开始（Trace on）！",
+  "url": "https://media.fgo.wiki/d/d7/011di_sk2.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_finish_it",
+  "character": "emiya",
+  "label": "技能 3",
+  "ja": "この際だ。確実に仕留める",
+  "zh": "趁这个机会，彻底解决掉吧。",
+  "url": "https://media.fgo.wiki/f/f6/SV11_0_%E6%8A%80%E8%83%BD3.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_forge",
+  "character": "emiya",
+  "label": "宝具卡 2",
+  "ja": "そうか。では錬鉄の火を灯そう",
+  "zh": "……这样啊。那就点燃冶炼之火吧。",
+  "url": "https://media.fgo.wiki/4/46/SV11_0_%E5%AE%9D%E5%85%B7%E5%8D%A12.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_np",
+  "character": "emiya",
+  "label": "宝具",
+  "ja": "I am the bone of my sword. So as I pray, unlimited blade works.",
+  "zh": "I am the bone of my sword. So as I pray, unlimited blade works.",
+  "url": "https://media.fgo.wiki/9/91/011di_np.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_there",
+  "character": "emiya",
+  "label": "攻击 4",
+  "ja": "そこだっ！",
+  "zh": "就是那里！",
+  "url": "https://media.fgo.wiki/2/23/SV11_0_%E6%94%BB%E5%87%BB4.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_twin",
+  "character": "emiya",
+  "label": "攻击 6",
+  "ja": "干将、莫邪！",
+  "zh": "干将，莫邪！",
+  "url": "https://media.fgo.wiki/f/f4/SV11_0_%E6%94%BB%E5%87%BB6.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_got_you",
+  "character": "emiya",
+  "label": "Extra 1",
+  "ja": "もらったぞ！",
+  "zh": "拿下了……！",
+  "url": "https://media.fgo.wiki/c/c1/011di_exat.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_hurt",
+  "character": "emiya",
+  "label": "受击 1",
+  "ja": "やってくれる……！",
+  "zh": "真行啊……！",
+  "url": "https://media.fgo.wiki/5/53/011di_da1.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_defeat",
+  "character": "emiya",
+  "label": "无法战斗 2",
+  "ja": "私の……敗北だ……",
+  "zh": "是我……输了……",
+  "url": "https://media.fgo.wiki/8/87/011di_de2.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
+ },
+ {
+  "id": "emiya_victory",
+  "character": "emiya",
+  "label": "胜利 1",
+  "ja": "決意も覚悟も足りなかったな。",
+  "zh": "决心与觉悟都不够呢。",
+  "url": "https://media.fgo.wiki/e/e0/011di_btf1.mp3",
+  "page": "https://fgo.wiki/w/卫宫/语音"
  }
 ]

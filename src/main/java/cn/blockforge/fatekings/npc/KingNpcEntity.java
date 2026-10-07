@@ -85,6 +85,11 @@ public abstract class KingNpcEntity extends PathfinderMob {
         this.takenThisFight += taken;
     }
 
+    /** Those this spirit never turns on, even when struck by them (Artoria and EMIYA, each for the other). */
+    protected Class<?>[] neverRetaliate() {
+        return new Class<?>[0];
+    }
+
     protected static boolean ignoredPlayer(LivingEntity e) {
         return e instanceof Player p && (p.isCreative() || p.isSpectator());
     }
@@ -95,7 +100,7 @@ public abstract class KingNpcEntity extends PathfinderMob {
         this.goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 0.7));
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 10.0f));
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
-        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this, neverRetaliate()));
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, LivingEntity.class, true,
             (target, level) -> !ignoredPlayer(target) && this.canHarm(target)));
     }
@@ -120,12 +125,17 @@ public abstract class KingNpcEntity extends PathfinderMob {
             && (now - this.kingState.lastHurt) % KingRules.GOLD_REGEN_INTERVAL == 0) {
             this.kingState.gold = Math.min(KingRules.NPC_GOLD_HP, this.kingState.gold + 5.0f);
         }
-        if (kingType() == KingRules.HERO) HeroPassives.tick(this, this.kingState, now);
-        else {
-            KnightPassives.tick(this, this.kingState, now);
-            ExcaliburSkill.tickDash(level, this);
-            cn.blockforge.fatekings.knight.KnightLeap.tick(this);
-            if (this.onGround()) this.kingState.airDashUsed = false;
+        switch (kingType()) {
+            case KingRules.HERO -> HeroPassives.tick(this, this.kingState, now);
+            case KingRules.KNIGHT -> {
+                KnightPassives.tick(this, this.kingState, now);
+                ExcaliburSkill.tickDash(level, this);
+                cn.blockforge.fatekings.knight.KnightLeap.tick(this);
+                if (this.onGround()) this.kingState.airDashUsed = false;
+            }
+            case KingRules.ARCHER -> cn.blockforge.fatekings.archer.ArcherPassives.tick(this, this.kingState, now);
+            default -> {
+            }
         }
         this.resetFallDistance();
         LivingEntity target = this.getTarget();

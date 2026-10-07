@@ -96,6 +96,54 @@ public final class KingAiRules {
             || hostilesNear >= CROWD;
     }
 
+    // ---- EMIYA ----
+    public static final int EMIYA_CALM = 0;
+    public static final int EMIYA_SERIOUS = 1;
+    /** He draws the twin blades when a foe closes inside 6 blocks and goes back to the bow beyond 9. */
+    public static final double EMIYA_SWORD_IN = 6.0;
+    public static final double EMIYA_BOW_OUT = 9.0;
+
+    public static int emiyaTier(float healthFrac, boolean strongFoe) {
+        return strongFoe || healthFrac < 0.7f ? EMIYA_SERIOUS : EMIYA_CALM;
+    }
+
+    /** Swords (true) or the bow, with a margin so he does not flicker between them. */
+    public static boolean emiyaSwords(double dist, boolean holdingSwords) {
+        return holdingSwords ? dist < EMIYA_BOW_OUT : dist < EMIYA_SWORD_IN;
+    }
+
+    /** Rho Aias against a wall of gates aimed at him, a flight of arrows, or a beam coming. */
+    public static boolean emiyaWantsRhoAias(boolean ready, int gatesAimedAtHim, int projectilesInbound, boolean beamInbound) {
+        return ready && (gatesAimedAtHim >= 5 || projectilesInbound >= 3 || beamInbound);
+    }
+
+    /** Caladbolg II: a boss at once; a strong foe after a while, when Infinity keeps stopping him, or when he is hurt. */
+    public static boolean emiyaWantsCaladbolg(boolean ready, boolean neutralAnimal, boolean strongFoe, int fightTicks, int infinityBlockedTicks,
+                                              float healthFrac, boolean boss) {
+        if (!ready || neutralAnimal) return false;
+        return boss || strongFoe && (fightTicks > 200 || infinityBlockedTicks >= 100 || healthFrac < 0.4f);
+    }
+
+    public static boolean emiyaWantsCraneWing(boolean ready, boolean strongFoe, float healthFrac, double dist) {
+        return ready && (strongFoe || healthFrac < 0.5f) && dist >= 5.0 && dist <= 20.0;
+    }
+
+    /**
+     * Unlimited Blade Works, once a fight: against the King of Heroes soon (it is his natural enemy),
+     * against the worthy when hurt, after a long fight or when they open a domain, or against a horde.
+     */
+    public static boolean emiyaWantsUbw(boolean ready, boolean usedThisFight, boolean vsGilgamesh, boolean foeWorthy, int fightTicks,
+                                        float healthFrac, boolean enemyDomain, int hostilesNear) {
+        if (!ready || usedThisFight) return false;
+        if (vsGilgamesh) return fightTicks > 100;
+        return foeWorthy && (healthFrac < 0.5f || fightTicks > 600 || enemyDomain) || hostilesNear >= CROWD + 2;
+    }
+
+    /** The traced Excalibur: only once he has seen it, against the worthy, from a distance. */
+    public static boolean emiyaWantsReplica(boolean seenExcalibur, boolean ready, boolean foeWorthy, double dist) {
+        return seenExcalibur && ready && foeWorthy && dist >= 12.0;
+    }
+
     // ---- Noble phantasm clash (13.3) ----
     public static final int CLASH_WINDOW = 60;
     public static final int CLASH_TICKS = 60;

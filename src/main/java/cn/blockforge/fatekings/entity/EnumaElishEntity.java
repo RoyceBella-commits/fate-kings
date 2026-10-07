@@ -74,6 +74,8 @@ public class EnumaElishEntity extends BeamEntity {
             Fx.particles(level, Fx.dust(level.getRandom().nextBoolean() ? 0xB0101A : 0x1A0A0E, 2.0f), p.x, p.y, p.z, 3, width * 0.25, width * 0.25, width * 0.25, 0.0);
         }
         if (Terrain.enabled()) carve(level, from, to, width * 0.45);
+        // Ea tears a reality marble apart.
+        UbwEntity.tearIfCrossed(level, from, to, owner);
     }
 
     private void carve(ServerLevel level, Vec3 from, Vec3 to, double r) {

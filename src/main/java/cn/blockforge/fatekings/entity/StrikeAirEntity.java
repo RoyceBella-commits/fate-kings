@@ -1,6 +1,7 @@
 package cn.blockforge.fatekings.entity;
 
 import cn.blockforge.fatekings.combat.Fx;
+import cn.blockforge.fatekings.combat.Judgement;
 import cn.blockforge.fatekings.combat.Terrain;
 import cn.blockforge.fatekings.compat.JjkCompat;
 import cn.blockforge.fatekings.registry.FateEntities;
@@ -106,7 +107,7 @@ public class StrikeAirEntity extends Projectile {
     private void strike(ServerLevel level, LivingEntity e, Vec3 v) {
         Entity owner = this.getOwner();
         DamageSource source = this.damageSources().mobProjectile(this, owner instanceof LivingEntity l ? l : null);
-        e.setInvulnerableTime(0);
+        Judgement.fresh(e);
         e.hurtServer(level, source, 25.0f);
         Vec3 push = v.normalize().scale(2.4).add(0.0, 0.65, 0.0);
         e.setDeltaMovement(push);

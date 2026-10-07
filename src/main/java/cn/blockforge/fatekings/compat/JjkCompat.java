@@ -2,6 +2,7 @@ package cn.blockforge.fatekings.compat;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -11,6 +12,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +42,8 @@ public final class JjkCompat {
     private static Method route, stage, withGold, setState, sync, goldHpTable, infinityActive, activeSkill, terrain, setTerrain, slashMode;
     private static Field burstHeal;
     private static Method damageTaken;
+    private static Method domainRegister, domainUnregister, domainOf, domainActive, domainRival;
+    private static Field domainOwner, domainOpenedAt;
 
     private JjkCompat() {
     }
@@ -87,6 +91,25 @@ public final class JjkCompat {
             LOGGER.warn("Gojo x Sukuna NPC healing not adjustable", e);
         }
         try {
+            Class<?> clash = Class.forName(PKG + "combat.DomainClash");
+            Class<?> domain = Class.forName(PKG + "combat.DomainClash$Domain");
+            domainRegister = clash.getMethod("register", LivingEntity.class, Entity.class, Vec3.class, double.class, boolean.class);
+            domainUnregister = clash.getMethod("unregister", Entity.class);
+            domainOf = clash.getMethod("of", Entity.class);
+            domainActive = clash.getMethod("active");
+            domainRival = domain.getMethod("rival");
+            domainOwner = domain.getField("owner");
+            try {
+                domainOpenedAt = domain.getDeclaredField("openedAt");
+                domainOpenedAt.setAccessible(true);
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                domainOpenedAt = null;
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            LOGGER.warn("Gojo x Sukuna domain clash not reachable; Unlimited Blade Works will not clash with domains", e);
+            domainRegister = null;
+        }
+        try {
             damageTaken = Class.forName(PKG + "combat.DamageTaken").getMethod("apply", LivingEntity.class, DamageSource.class, float.class);
         } catch (ReflectiveOperationException | RuntimeException e) {
             LOGGER.warn("Gojo x Sukuna damage shares not readable", e);
@@ -108,6 +131,67 @@ public final class JjkCompat {
         } catch (ReflectiveOperationException | RuntimeException e) {
             return 1.0f;
         }
+    }
+
+    // ---- Domain clash (Unlimited Blade Works counts as a domain) ----
+
+    /** Registers a reality marble with the other mod's domain clash (closed: no blink across its wall). */
+    public static void registerDomain(LivingEntity caster, Entity entity, Vec3 centre, double radius, boolean closed) {
+        if (!LOADED) return;
+        resolve();
+        if (domainRegister == null) return;
+        try {
+            domainRegister.invoke(null, caster, entity, centre, radius, closed);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            LOGGER.warn("Could not register a domain", e);
+        }
+    }
+
+    public static void unregisterDomain(Entity entity) {
+        if (!LOADED || domainUnregister == null) return;
+        try {
+            domainUnregister.invoke(null, entity);
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        }
+    }
+
+    /** Whether the other mod knows {@code entity} as a domain. */
+    public static boolean domainRegistered(Entity entity) {
+        return domainHandle(entity) != null;
+    }
+
+    private static Object domainHandle(Entity entity) {
+        if (!LOADED) return null;
+        resolve();
+        if (domainOf == null) return null;
+        try {
+            return domainOf.invoke(null, entity);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** The owner of the domain {@code entity} is clashing with, or null. */
+    public static UUID domainRival(Entity entity) {
+        Object d = domainHandle(entity);
+        if (d == null || domainRival == null) return null;
+        try {
+            return (UUID)domainRival.invoke(d);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** When the domain of {@code owner} opened (game time), or -1. */
+    public static long domainOpenedAt(UUID owner) {
+        if (!LOADED || domainActive == null || domainOwner == null || domainOpenedAt == null) return -1L;
+        try {
+            for (Object d : (java.util.List<?>)domainActive.invoke(null)) {
+                if (owner.equals(domainOwner.get(d))) return domainOpenedAt.getLong(d);
+            }
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        }
+        return -1L;
     }
 
     public static Identifier typeId(Entity e) {

@@ -38,6 +38,12 @@ public final class FateNet {
     public static final Identifier C2S_SLASH = FateKings.id("slash");
     /** Someone swung Excalibur at this angle (so everyone sees the same stroke). */
     public static final Identifier S2C_SWING = FateKings.id("swing");
+    /** EMIYA's twin-blade stroke (its place in the combo). */
+    public static final Identifier C2S_TWIN = FateKings.id("twin");
+    /** The Hill of Swords screen: project / forget / select an entry. */
+    public static final Identifier C2S_PROJECT = FateKings.id("project");
+    /** The Hill of Swords to its owner (a registry-aware buffer of item stacks). */
+    public static final Identifier S2C_ARSENAL = FateKings.id("arsenal");
 
     private static final Map<Identifier, Integer> LIMITS = new LinkedHashMap<>();
     private static final Map<Identifier, CustomPacketPayload.Type<Payload>> TYPES = new LinkedHashMap<>();
@@ -56,6 +62,9 @@ public final class FateNet {
         register(C2S_LEAP, 9, true);
         register(C2S_SLASH, 5, true);
         register(S2C_SWING, 12, false);
+        register(C2S_TWIN, 2, true);
+        register(C2S_PROJECT, 6, true);
+        register(S2C_ARSENAL, 65536, false);
     }
 
     private static void register(Identifier id, int limit, boolean c2s) {

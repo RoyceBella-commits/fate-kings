@@ -2,6 +2,7 @@ package cn.blockforge.fatekings.hero;
 
 import cn.blockforge.fatekings.combat.Aim;
 import cn.blockforge.fatekings.combat.Fx;
+import cn.blockforge.fatekings.combat.Judgement;
 import cn.blockforge.fatekings.combat.Sides;
 import cn.blockforge.fatekings.compat.JjkCompat;
 import cn.blockforge.fatekings.entity.ChainEntity;
@@ -82,7 +83,7 @@ public final class Enkidu {
         }
         if (stoppedByInfinity(level, from, target)) return true;
         ChainEntity.spawn(level, from, target, aim.point(), ChainEntity.HOOK, 12);
-        target.setInvulnerableTime(0);
+        Judgement.fresh(target);
         target.hurtServer(level, FateDamage.source(level, FateDamage.CHAIN, caster, caster), 8.0f);
         if (!BINDS.containsKey(target.getUUID())) {
             Vec3 dest = caster.position().add(caster.getViewVector(1.0f).multiply(1.0, 0.0, 1.0).normalize().scale(2.0));
@@ -157,7 +158,7 @@ public final class Enkidu {
             if (b.high && (b.until - now) % 20 == 0) {
                 // The tighter the chain holds a higher being, the brighter it glows.
                 LivingEntity caster = level.getEntity(b.caster) instanceof LivingEntity l ? l : null;
-                target.setInvulnerableTime(0);
+                Judgement.fresh(target);
                 target.hurtServer(level, FateDamage.source(level, FateDamage.CHAIN, caster, caster), 6.0f);
                 Fx.particles(level, Fx.dust(0xFFF1A8, 1.4f), target.getBoundingBox().getCenter(), 14, 0.5, 0.0);
                 level.playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.CHAIN_HIT, SoundSource.PLAYERS, 1.0f, 0.7f);

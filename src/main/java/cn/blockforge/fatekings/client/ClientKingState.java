@@ -19,6 +19,10 @@ public final class ClientKingState {
     public static int counterLeft;
     public static int domeLeft;
     public static int regenPausedLeft;
+    public static int ubwLeft;
+    public static int rhoPetals;
+    public static int rhoLeft;
+    public static int projected;
     public static final Map<String, Integer> COOLDOWNS = new HashMap<>();
     public static long receivedAt;
     public static long goldChangedAt;
@@ -46,6 +50,10 @@ public final class ClientKingState {
             int left = buf.readVarInt();
             if (i < KingSync.KEYS.length) COOLDOWNS.put(KingSync.KEYS[i], left);
         }
+        ubwLeft = buf.readVarInt();
+        rhoPetals = buf.readByte();
+        rhoLeft = buf.readVarInt();
+        projected = buf.readByte();
         receivedAt = System.nanoTime();
     }
 

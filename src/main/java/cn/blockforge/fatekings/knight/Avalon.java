@@ -38,7 +38,7 @@ public final class Avalon {
     /** Enuma Elish, World Cut, Hollow Purple, another knight's Excalibur, or any hit taking half her life. */
     public static boolean ultimate(LivingEntity target, DamageSource source, float amount) {
         if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || source.typeHolder().is(SURE_HIT)) return false;
-        if (FateDamage.is(source, FateDamage.ENUMA_ELISH) || source.typeHolder().is(WORLD_CUT)) return true;
+        if (FateDamage.is(source, FateDamage.ENUMA_ELISH) || FateDamage.is(source, FateDamage.CALADBOLG) || source.typeHolder().is(WORLD_CUT)) return true;
         if (FateDamage.is(source, FateDamage.EXCALIBUR) && source.getEntity() != target) return true;
         if (purple(target, source)) return true;
         KingState s = Kings.of(target);

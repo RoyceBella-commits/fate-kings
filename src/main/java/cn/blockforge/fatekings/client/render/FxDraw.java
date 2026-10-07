@@ -22,6 +22,10 @@ public final class FxDraw {
     public static final Identifier SHARD = FateKings.id("textures/misc/avalon_shard.png");
     public static final Identifier CRACKS = FateKings.id("textures/misc/golden_cracks.png");
     public static final Identifier VIMANA = FateKings.id("textures/entity/vimana.png");
+    public static final Identifier RHO_PETAL = FateKings.id("textures/misc/rho_aias_petal.png");
+    public static final Identifier TWIN_TRAIL = FateKings.id("textures/misc/twin_trail.png");
+    public static final Identifier UBW_SKY = FateKings.id("textures/misc/ubw_sky.png");
+    public static final Identifier UBW_GEAR = FateKings.id("textures/misc/ubw_gear.png");
 
     private FxDraw() {
     }
@@ -123,6 +127,27 @@ public final class FxDraw {
         if (side.lengthSqr() < 1.0E-8) return;
         side = side.normalize().scale(width * 0.5);
         quad(pose, buf, a.subtract(side), b.subtract(side), b.add(side), a.add(side), ca, cb, cb, ca);
+    }
+
+    /** A camera-facing textured band (translucent, so a dark trail is visible too). */
+    public static void texRibbon(PoseStack pose, PortBuffers buf, Identifier tex, Vec3 a, Vec3 b, Vec3 toCamera, float width, int color, float v0, float v1) {
+        Vec3 along = b.subtract(a);
+        Vec3 side = along.cross(toCamera);
+        if (side.lengthSqr() < 1.0E-8) return;
+        side = side.normalize().scale(width * 0.5);
+        texQuad(pose, buf, tex, a.subtract(side), b.subtract(side), b.add(side), a.add(side), color, v0, 0.0f, v1, 1.0f);
+    }
+
+    /** A textured latitude / longitude sphere (u around, v from top to bottom), seen from inside and out. */
+    public static void texSphere(PoseStack pose, PortBuffers b, Identifier tex, Vec3 c, float r, int lat, int lon, int color) {
+        for (int i = 0; i < lat; ++i) {
+            double t0 = Math.PI * i / lat, t1 = Math.PI * (i + 1) / lat;
+            for (int j = 0; j < lon; ++j) {
+                double p0 = Math.PI * 2 * j / lon, p1 = Math.PI * 2 * (j + 1) / lon;
+                texQuad(pose, b, tex, sp(c, r, t0, p0), sp(c, r, t0, p1), sp(c, r, t1, p1), sp(c, r, t1, p0), color,
+                    j / (float)lon, i / (float)lat, (j + 1) / (float)lon, (i + 1) / (float)lat);
+            }
+        }
     }
 
     /** A flat ring between two radii in the plane perpendicular to {@code normal}. */

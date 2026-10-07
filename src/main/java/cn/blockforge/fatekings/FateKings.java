@@ -61,6 +61,9 @@ public final class FateKings implements ModInitializer {
         FateNet.registerTypes();
         FateNet.receive(FateNet.C2S_LEAP, (server, player, buf) -> KnightLeap.handle(player, buf.readFloat(), buf.readFloat(), buf.readBoolean()));
         FateNet.receive(FateNet.C2S_SLASH, (server, player, buf) -> cn.blockforge.fatekings.knight.Slashes.handle(player, buf.readFloat(), buf.readByte()));
+        FateNet.receive(FateNet.C2S_TWIN, (server, player, buf) -> cn.blockforge.fatekings.archer.TwinBlades.handle(player, buf.readByte()));
+        FateNet.receive(FateNet.C2S_PROJECT, (server, player, buf) -> cn.blockforge.fatekings.archer.UnlimitedBladeWorks.fromScreen(player, buf.readVarInt(), buf.readByte()));
+        cn.blockforge.fatekings.archer.ProjectionGuards.register();
         DamageHooks.register();
         CommandRegistrationCallback.EVENT.register((dispatcher, context, selection) -> FateCommands.register(dispatcher));
 
@@ -75,6 +78,7 @@ public final class FateKings implements ModInitializer {
             for (ServerLevel level : server.getAllLevels()) {
                 Enkidu.tick(level);
                 NoblePhantasmClash.tick(level);
+                cn.blockforge.fatekings.archer.RhoAias.tick(level);
                 if (server.getTickCount() % 20 == 0) {
                     for (Entity e : level.getAllEntities()) {
                         if (e instanceof AbstractHorse horse && WarhorseItem.isWarhorse(horse)) WarhorseItem.tickHorse(level, horse);
@@ -82,6 +86,8 @@ public final class FateKings implements ModInitializer {
                 }
             }
             Instinct.tickJjk(server);
+            cn.blockforge.fatekings.archer.TwinBlades.tick(server);
+            cn.blockforge.fatekings.archer.CraneWing.tick(server);
             Terrain.tick(server);
         });
         ServerEntityEvents.ENTITY_LOAD.register(Instinct::onEntityLoad);
@@ -92,6 +98,7 @@ public final class FateKings implements ModInitializer {
         ServerPlayerEvents.LEAVE.register(p -> {
             GateOfBabylon.cancelVolley(p);
             HeroPassives.forget(p);
+            cn.blockforge.fatekings.archer.Archer.leave(p);
         });
         // Riding A: the King of Knights mounts an untamed horse and it simply obeys.
         UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
@@ -101,13 +108,17 @@ public final class FateKings implements ModInitializer {
             }
             return InteractionResult.PASS;
         });
-        // Artoria protects villagers, iron golems and players near her.
+        // Artoria and EMIYA protect villagers, iron golems and players near them (never turning on each other).
         ServerLivingEntityEvents.AFTER_DAMAGE.register((victim, source, base, taken, blocked) -> {
             if (!(victim instanceof AbstractVillager || victim instanceof IronGolem || victim instanceof Player)) return;
-            if (!(source.getEntity() instanceof LivingEntity attacker) || attacker instanceof ArtoriaEntity || attacker == victim) return;
+            if (!(source.getEntity() instanceof LivingEntity attacker) || attacker == victim
+                || attacker instanceof ArtoriaEntity || attacker instanceof cn.blockforge.fatekings.npc.EmiyaEntity) return;
             if (attacker instanceof Player p && (p.isCreative() || p.isSpectator())) return;
             for (ArtoriaEntity a : victim.level().getEntitiesOfClass(ArtoriaEntity.class, victim.getBoundingBox().inflate(16.0))) {
                 if (a.getTarget() == null && a != attacker) a.setTarget(attacker);
+            }
+            for (var e : victim.level().getEntitiesOfClass(cn.blockforge.fatekings.npc.EmiyaEntity.class, victim.getBoundingBox().inflate(24.0))) {
+                if (e.getTarget() == null && e != attacker) e.setTarget(attacker);
             }
         });
         ServerLifecycleEvents.SERVER_STARTED.register(server -> clearTransient());
@@ -128,5 +139,7 @@ public final class FateKings implements ModInitializer {
         WarhorseItem.clear();
         Regalia.clear();
         NoblePhantasmClash.clear();
+        cn.blockforge.fatekings.archer.Archer.clear();
+        cn.blockforge.fatekings.compat.Restraint.clear();
     }
 }

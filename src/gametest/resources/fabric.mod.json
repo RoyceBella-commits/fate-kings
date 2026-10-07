@@ -6,7 +6,8 @@
   "environment": "*",
   "entrypoints": {
     "fabric-gametest": [
-      "cn.blockforge.fatekings.gametest.FateServerTests"
+      "cn.blockforge.fatekings.gametest.FateServerTests",
+      "cn.blockforge.fatekings.gametest.ArcherServerTests"
     ],
     "fabric-client-gametest": [
       "cn.blockforge.fatekings.gametest.FateClientTests"

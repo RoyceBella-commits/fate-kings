@@ -1,5 +1,6 @@
 package cn.blockforge.fatekings.checks;
 
+import cn.blockforge.fatekings.archer.ArcherRules;
 import cn.blockforge.fatekings.combat.DamageRules;
 import cn.blockforge.fatekings.combat.JudgementRules;
 import cn.blockforge.fatekings.combat.JudgementRules.Outcome;
@@ -43,6 +44,7 @@ public final class RulesCheck {
         kings();
         damage();
         judgement();
+        archer();
         ai();
         state();
         resources(res);
@@ -56,6 +58,14 @@ public final class RulesCheck {
         check(KingRules.kingOfSet(3, 0) == KingRules.NONE, "incomplete golden set -> nobody");
         check(KingRules.kingOfSet(2, 2) == KingRules.NONE, "two and two -> nobody");
         check(KingRules.kingOfSet(0, 0) == KingRules.NONE, "nothing -> nobody");
+        check(KingRules.kingOfSet(0, 0, 4) == KingRules.ARCHER, "full Red Shroud -> archer");
+        check(KingRules.kingOfSet(4, 0, 1) == KingRules.NONE && KingRules.kingOfSet(0, 1, 3) == KingRules.NONE
+            && KingRules.kingOfSet(2, 0, 2) == KingRules.NONE, "a shroud piece spoils any set, any other piece spoils the shroud");
+        check(KingRules.kingOfSet(4, 0, 0) == KingRules.HERO && KingRules.kingOfSet(0, 4, 0) == KingRules.KNIGHT, "three-way sets keep the two kings");
+        check(!KingRules.mayEnter(KingRules.ARCHER, KingRules.KNIGHT, 1000, 999), "knight -> archer waits for the lock");
+        check(near(KingRules.ARCHER_SPEED, 0.25) && near(KingRules.speed(KingRules.ARCHER), 0.25) && KingRules.speed(KingRules.NONE) == 0.0f,
+            "archer +25%");
+        check("ARCHER".equals(KingRules.roman(KingRules.ARCHER)), "roman name");
         check(!KingRules.mayEnter(KingRules.KNIGHT, KingRules.HERO, 1000, 999), "hero -> knight inside the 15 s lock is refused");
         check(KingRules.mayEnter(KingRules.KNIGHT, KingRules.HERO, 1000, 1000), "hero -> knight once the lock ends");
         check(KingRules.mayEnter(KingRules.HERO, KingRules.HERO, 1000, 10), "returning to the same king is never locked");
@@ -162,6 +172,55 @@ public final class RulesCheck {
         check(DamageRules.topUp(35.0, 30.0) == 0.0, "never stacks above");
     }
 
+    private static void archer() {
+        // Homing: never more than the turn limit, unit length, straight to the target inside it.
+        double[] cur = {1, 0, 0};
+        double[] side = ArcherRules.turn(cur, new double[]{0, 0, 1}, Math.toRadians(18.0));
+        check(Math.abs(Math.toDegrees(Math.acos(side[0])) - 18.0) < 1.0E-6 && near(Math.hypot(Math.hypot(side[0], side[1]), side[2]), 1.0),
+            "homing turns 18 degrees a tick at most");
+        double[] close = ArcherRules.turn(cur, new double[]{1, 0.1, 0}, Math.toRadians(18.0));
+        check(Math.abs(close[1] - 0.1 / Math.hypot(1, 0.1)) < 1.0E-9, "within the limit it points straight at it");
+        double[] back = ArcherRules.turn(cur, new double[]{-1, 0, 0}, Math.toRadians(30.0));
+        check(near(Math.hypot(Math.hypot(back[0], back[1]), back[2]), 1.0) && back[0] < 0.9 && back[0] > 0.8, "turning about from straight behind");
+        check(ArcherRules.arrowTurn(3.0) > ArcherRules.arrowTurn(10.0), "it turns harder when close");
+        double[] led = ArcherRules.lead(new double[]{0, 0, 0}, new double[]{1, 0, 0}, 32.0, 3.2, ArcherRules.ARROW_LEAD_MAX);
+        check(near(led[0], ArcherRules.ARROW_LEAD_MAX), "the arrow's lead is capped");
+        check(ArcherRules.arrowDamage(0.0f) == 12.0f && ArcherRules.arrowDamage(1.0f) == 16.0f, "arrows 12-16");
+        check(ArcherRules.bowTapCooldown(false) == 4 && ArcherRules.bowTapCooldown(true) == 2, "a tap every 4 ticks, 2 in his marble");
+        check(ArcherRules.BOW_TAP_TICKS < ArcherRules.CALADBOLG_CHARGE && ArcherRules.CALADBOLG_CHARGE == 30, "tap / Caladbolg at 1.5 s");
+        check(ArcherRules.caladbolgCooldown(false) == 900 && ArcherRules.caladbolgCooldown(true) == 1200, "Caladbolg 45 s / NPC 60 s");
+        // Rho Aias.
+        check(ArcherRules.petalsAfter(0) == 7 && ArcherRules.petalsAfter(4) == 7 && ArcherRules.petalsAfter(5) == 6 && ArcherRules.petalsAfter(35) == 0,
+            "seven petals, five projectiles each");
+        check(ArcherRules.beamPetalCost(true, false) == 4 && ArcherRules.beamPetalCost(false, true) == 3 && ArcherRules.beamPetalCost(false, false) == 2,
+            "beams tear 4 / 3 / 2 petals");
+        check(ArcherRules.RHO_AIAS_TIME == 120 && ArcherRules.RHO_AIAS == 1200, "6 s, 60 s cooldown");
+        // The marble and the domain clash.
+        check(ArcherRules.ubwAfterClash(500, true) == 440 && ArcherRules.ubwAfterClash(300, false) == 300 && ArcherRules.ubwAfterClash(300, true) == 340,
+            "clash: at most 20 s, 2 s more for the first");
+        check(ArcherRules.UBW_TIME == 600 && ArcherRules.UBW_RADIUS == 34.0 && ArcherRules.ubwCooldown(false) == 3600, "30 s, radius 34, 180 s");
+        check(ArcherRules.UBW_CHANT_START < ArcherRules.UBW_CHANT && ArcherRules.UBW_CHANT == 60, "the aria takes 3 s");
+        // The twin-blade combo.
+        int step = -1;
+        int[] seen = new int[ArcherRules.COMBO_STEPS];
+        for (int i = 0; i < 12; ++i) {
+            step = ArcherRules.nextStep(step, 300L);
+            ++seen[step];
+        }
+        boolean all = true;
+        for (int n : seen) all &= n == 2;
+        check(all, "the six strokes come in turn");
+        check(ArcherRules.nextStep(3, ArcherRules.TWIN_RESET_MS + 1) == ArcherRules.STEP_RIGHT, "after a pause the combo starts over");
+        check(ArcherRules.strokeHits(ArcherRules.STEP_CROSS) == 2 && ArcherRules.secondHit(ArcherRules.STEP_CROSS) == 0.6f, "the cross strikes twice");
+        check(ArcherRules.strokeAllRound(ArcherRules.STEP_SPIN) && ArcherRules.sweepShare(ArcherRules.STEP_SPIN) == 0.7f, "the spin catches all round");
+        check(ArcherRules.strokeBonus(ArcherRules.STEP_CHOP) > 0.0f && ArcherRules.strokeHand(ArcherRules.STEP_LEFT) == 1, "chop bites, backhand is the off hand");
+        for (int s = 0; s <= ArcherRules.STEP_OVEREDGE; ++s) check(ArcherRules.strokeMs(s) >= 250L && ArcherRules.strokeMs(s) <= 500L, "stroke time " + s);
+        // Projection and the replica.
+        check(ArcherRules.PROJECTION_LIFETIME == 1200 && ArcherRules.PROJECTION_MAX == 3 && ArcherRules.ARSENAL_CAP == 27, "copies 60 s, 3 at once, 27 kept");
+        check(ArcherRules.replicaWidth(ArcherRules.REPLICA_CHARGE) == 2.5f && ArcherRules.replicaWidth(1000) == 4.5f, "replica width 2.5-4.5");
+        check(ArcherRules.REPLICA_RANGE < KingRules.EXCALIBUR_RANGE && ArcherRules.REPLICA_NPC_LOSS < KingRules.NPC_PHANTASM_LOSS, "the replica falls short");
+    }
+
     private static void judgement() {
         check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.VANILLA, true, true) == Outcome.INSTANT_DEATH, "Excalibur kills vanilla creatures");
         check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.PLAYER, false, true) == Outcome.INSTANT_DEATH, "Excalibur kills an ordinary player");
@@ -173,7 +232,7 @@ public final class RulesCheck {
         check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.GOJO, false, true) == Outcome.CRIPPLE, "... and a Gojo player");
         check(JudgementRules.outcome(Weapon.EA, Side.GOJO, true, true) == Outcome.NPC_BLOW, "Ea on the Gojo NPC: 190 (through Infinity)");
         check(JudgementRules.outcome(Weapon.EA, Side.GOJO, false, true) == Outcome.CHARACTER_DAMAGE, "Ea on a Gojo player: 90-100");
-        for (Side s : new Side[]{Side.SUKUNA, Side.HERO, Side.KNIGHT}) {
+        for (Side s : new Side[]{Side.SUKUNA, Side.HERO, Side.KNIGHT, Side.ARCHER}) {
             for (Weapon w : Weapon.values()) {
                 check(JudgementRules.outcome(w, s, true, true) == Outcome.NPC_BLOW, w + " on the " + s + " NPC: 190");
                 check(JudgementRules.outcome(w, s, false, true) == Outcome.CHARACTER_DAMAGE, w + " on a " + s + " player: 90-100");
@@ -184,6 +243,22 @@ public final class RulesCheck {
         }
         check(JudgementRules.outcome(Weapon.EA, Side.PLAYER, false, true) == Outcome.CHARACTER_DAMAGE, "Ea on a player: 90-100");
         check(JudgementRules.outcome(Weapon.EXCALIBUR, Side.OTHER_MOD, true, true) == Outcome.HEAVY_DAMAGE, "other mods' creatures: 1000, no instakill");
+        // EMIYA's Caladbolg II and a projected Excalibur.
+        check(JudgementRules.outcome(Weapon.CALADBOLG, Side.MAHORAGA, true, true) == Outcome.WHEEL_CANNOT_TURN, "Caladbolg kills Mahoraga");
+        check(JudgementRules.outcome(Weapon.EXCALIBUR_REPLICA, Side.MAHORAGA, true, true) == Outcome.HEAVY_DAMAGE, "a replica does not");
+        check(JudgementRules.outcome(Weapon.CALADBOLG, Side.VANILLA_BOSS, true, true) == Outcome.HEAVY_DAMAGE
+            && JudgementRules.outcome(Weapon.EXCALIBUR_REPLICA, Side.VANILLA, true, true) == Outcome.HEAVY_DAMAGE, "no instant death but Excalibur's");
+        check(JudgementRules.outcome(Weapon.CALADBOLG, Side.GOJO, true, true) == Outcome.NPC_BLOW
+            && JudgementRules.outcome(Weapon.CALADBOLG, Side.PLAYER, false, true) == Outcome.CHARACTER_DAMAGE, "Caladbolg: NPC blow / players");
+        check(JudgementRules.npcLoss(Weapon.EA) == 190.0f && JudgementRules.npcLoss(Weapon.CALADBOLG) == 120.0f
+            && JudgementRules.npcLoss(Weapon.EXCALIBUR_REPLICA) == 95.0f, "NPC losses 190 / 120 / 95");
+        check(JudgementRules.mobDamage(Weapon.EXCALIBUR) == 1000.0f && JudgementRules.mobDamage(Weapon.CALADBOLG) == 600.0f
+            && JudgementRules.mobDamage(Weapon.EXCALIBUR_REPLICA) == 500.0f, "creature damage 1000 / 600 / 500");
+        check(JudgementRules.characterDamage(Weapon.CALADBOLG, 0.0f) == 60.0f && JudgementRules.characterDamage(Weapon.CALADBOLG, 1.0f) == 70.0f
+            && JudgementRules.characterDamage(Weapon.EXCALIBUR_REPLICA, 1.0f) == 50.0f, "on players 60-70 / 45-50");
+        check(JudgementRules.piercesInfinity(Weapon.CALADBOLG) && !JudgementRules.piercesInfinity(Weapon.EXCALIBUR_REPLICA), "Caladbolg pierces Infinity, a replica not");
+        check(JudgementRules.killsMahoraga(Weapon.EA) && !JudgementRules.killsMahoraga(Weapon.EXCALIBUR_REPLICA), "only a replica is adapted to");
+        check(JudgementRules.worthy(Side.ARCHER, false), "the archer is worthy");
         check(JudgementRules.piercesInfinity(Weapon.EA) && JudgementRules.piercesInfinity(Weapon.EXCALIBUR), "both pierce Infinity");
         check(JudgementRules.worthy(Side.HERO, false) && JudgementRules.worthy(Side.KNIGHT, false), "kings are worthy");
         check(JudgementRules.worthy(Side.MAHORAGA, false) && JudgementRules.worthy(Side.VANILLA_BOSS, false), "Mahoraga and bosses are worthy");
@@ -222,6 +297,23 @@ public final class RulesCheck {
         check(!KingAiRules.gilChainCombo(KingAiRules.SERIOUS, false, true), "not for ordinary foes");
         check(!KingAiRules.gilChainCombo(KingAiRules.SERIOUS, true, false), "not while the chains cool down");
         check(KingAiRules.COMBO_BIND_COOLDOWN < KingRules.ENKIDU_BIND, "against the strong he reaches for the chains more often");
+        // EMIYA.
+        check(KingAiRules.emiyaSwords(5.0, false) && !KingAiRules.emiyaSwords(7.0, false) && KingAiRules.emiyaSwords(8.0, true)
+            && !KingAiRules.emiyaSwords(10.0, true), "blades inside 6, the bow beyond 9 (no flicker between)");
+        check(KingAiRules.emiyaWantsRhoAias(true, 5, 0, false) && KingAiRules.emiyaWantsRhoAias(true, 0, 3, false)
+            && KingAiRules.emiyaWantsRhoAias(true, 0, 0, true) && !KingAiRules.emiyaWantsRhoAias(false, 9, 9, true)
+            && !KingAiRules.emiyaWantsRhoAias(true, 2, 1, false), "Rho Aias against volleys, flights and beams");
+        check(KingAiRules.emiyaWantsCaladbolg(true, false, false, 0, 0, 1.0f, true), "Caladbolg at a boss at once");
+        check(!KingAiRules.emiyaWantsCaladbolg(true, false, true, 100, 0, 1.0f, false) && KingAiRules.emiyaWantsCaladbolg(true, false, true, 201, 0, 1.0f, false),
+            "at the strong after 10 s");
+        check(!KingAiRules.emiyaWantsCaladbolg(true, true, true, 999, 999, 0.1f, true), "never at a neutral animal");
+        check(KingAiRules.emiyaWantsUbw(true, false, true, true, 101, 1.0f, false, 0), "the marble against the King of Heroes");
+        check(!KingAiRules.emiyaWantsUbw(true, true, true, true, 999, 0.1f, true, 99), "once a fight");
+        check(KingAiRules.emiyaWantsUbw(true, false, false, true, 0, 0.4f, false, 0) && !KingAiRules.emiyaWantsUbw(true, false, false, false, 999, 0.1f, false, 0),
+            "against the worthy when hurt, never against the unworthy alone");
+        check(KingAiRules.emiyaWantsUbw(true, false, false, false, 0, 1.0f, false, KingAiRules.CROWD + 2), "or against a horde");
+        check(KingAiRules.emiyaWantsReplica(true, true, true, 12.0) && !KingAiRules.emiyaWantsReplica(false, true, true, 30.0), "the replica once he has seen Excalibur");
+        check(KingAiRules.emiyaTier(1.0f, true) == KingAiRules.EMIYA_SERIOUS && KingAiRules.emiyaTier(0.9f, false) == KingAiRules.EMIYA_CALM, "his temper");
         check(KingAiRules.saberTier(1.0f, false) == KingAiRules.COURTESY, "courtesy by default");
         check(KingAiRules.saberTier(1.0f, true) == KingAiRules.FULL_POWER, "strong foe: full power");
         check(KingAiRules.saberTier(0.6f, false) == KingAiRules.FULL_POWER, "below 70%: full power");
@@ -268,6 +360,8 @@ public final class RulesCheck {
         Set<String> keys = new HashSet<>(Set.of(KingSync.KEYS));
         for (String k : Skills.HERO_HUD) check(keys.contains(k), "HUD key synced: " + k);
         for (String k : Skills.KNIGHT_HUD) check(keys.contains(k), "HUD key synced: " + k);
+        for (String k : Skills.ARCHER_HUD) check(keys.contains(k), "HUD key synced: " + k);
+        check(Skills.hud(KingRules.ARCHER) == Skills.ARCHER_HUD && Skills.hud(KingRules.NONE).length == 0, "HUD rows per spirit");
     }
 
     private static JsonObject json(Path p) throws IOException {
@@ -281,7 +375,8 @@ public final class RulesCheck {
         check(zh.keySet().equals(en.keySet()), "zh_cn and en_us have the same keys");
         String[] items = {"golden_crown", "golden_chestplate", "golden_greaves", "golden_sabatons", "gate_of_babylon", "bab_ilu", "ea",
             "enkidu", "vimana", "treasury_elixir", "knight_ribbon", "knight_breastplate", "knight_skirt", "knight_boots", "excalibur",
-            "warhorse", "knight_barding", "gilgamesh_spawn_egg", "artoria_spawn_egg", "grail_mud"};
+            "warhorse", "knight_barding", "gilgamesh_spawn_egg", "artoria_spawn_egg", "grail_mud", "shroud_headpiece", "shroud_coat",
+            "shroud_leggings", "shroud_boots", "black_bow", "kanshou", "bakuya", "unlimited_blade_works", "excalibur_replica", "emiya_spawn_egg"};
         for (String id : items) {
             check(Files.exists(a.resolve("items/" + id + ".json")), "item model definition: " + id);
             check(zh.has("item.fatekings." + id), "item name: " + id);
@@ -294,13 +389,33 @@ public final class RulesCheck {
         check(Files.exists(a.resolve("textures/item/excalibur_release.png.mcmeta")), "the true name glow is animated");
         String excal = Files.readString(a.resolve("items/excalibur.json"));
         check(excal.contains("using_item") && excal.contains("\"air\"") && excal.contains("excalibur_revealed"), "Excalibur switches three states");
-        for (String eq : new String[]{"golden_regalia", "knight_regalia"}) {
+        for (String tex : new String[]{"black_bow", "black_bow_pulling_0", "black_bow_pulling_1", "black_bow_caladbolg", "kanshou", "bakuya",
+                "sword_arrow", "caladbolg_arrow", "unlimited_blade_works"}) {
+            check(Files.exists(a.resolve("textures/item/" + tex + ".png")), "texture: " + tex);
+            check(Files.exists(a.resolve("models/item/" + tex + ".json")), "model: " + tex);
+        }
+        for (String m : new String[]{"kanshou_overedge", "bakuya_overedge"}) check(Files.exists(a.resolve("models/item/" + m + ".json")), "Overedge model: " + m);
+        for (String id : new String[]{"sword_arrow", "caladbolg_arrow"}) check(Files.exists(a.resolve("items/" + id + ".json")), "look of " + id);
+        String bow = Files.readString(a.resolve("items/black_bow.json"));
+        check(bow.contains("use_duration") && bow.contains("black_bow_caladbolg"), "the bow draws and nocks the spiral sword");
+        check(Files.readString(a.resolve("items/kanshou.json")).contains("overedge"), "Kanshou grows for Crane Wing");
+        check(Files.readString(a.resolve("items/excalibur_replica.json")).contains("tints"), "the replica is tinted");
+        for (String tex : new String[]{"rho_aias_petal", "twin_trail", "ubw_sky", "ubw_gear"}) {
+            check(Files.exists(a.resolve("textures/misc/" + tex + ".png")), "effect texture: " + tex);
+        }
+        String unprojectable = Files.readString(res.resolve("data/fatekings/tags/item/unprojectable.json"));
+        for (String id : new String[]{"ea", "bab_ilu", "gate_of_babylon", "enkidu", "vimana", "unlimited_blade_works", "black_bow", "excalibur_replica"}) {
+            check(unprojectable.contains("\"fatekings:" + id + "\""), "cannot be projected: " + id);
+        }
+        check(!unprojectable.contains("excalibur\"") && !unprojectable.contains("kanshou"), "Excalibur (as a replica) and the twin blades can");
+        for (String eq : new String[]{"golden_regalia", "knight_regalia", "red_shroud"}) {
             check(Files.exists(a.resolve("equipment/" + eq + ".json")), "equipment asset: " + eq);
             check(Files.exists(a.resolve("textures/entity/equipment/humanoid/" + eq + ".png")), "armor layer: " + eq);
             check(Files.exists(a.resolve("textures/entity/equipment/humanoid_leggings/" + eq + ".png")), "leggings layer: " + eq);
         }
         check(Files.exists(a.resolve("textures/entity/equipment/horse_body/knight_barding.png")), "horse barding layer");
-        check(Files.exists(a.resolve("textures/entity/gilgamesh.png")) && Files.exists(a.resolve("textures/entity/artoria.png")), "NPC skins");
+        check(Files.exists(a.resolve("textures/entity/gilgamesh.png")) && Files.exists(a.resolve("textures/entity/artoria.png"))
+            && Files.exists(a.resolve("textures/entity/emiya.png")), "NPC skins");
         JsonObject sounds = json(a.resolve("sounds.json"));
         for (Voice v : Voice.values()) {
             check(zh.has(v.key()) && en.has(v.key()), "subtitle for " + v);
@@ -317,7 +432,14 @@ public final class RulesCheck {
         String armour = Files.readString(res.resolve("data/minecraft/tags/damage_type/bypasses_armor.json"));
         check(armour.contains("\"fatekings:enuma_elish\"") && armour.contains("\"fatekings:excalibur\"") && !armour.contains("_mob"),
             "armour stops the 1000 on creatures, not the blows on characters");
-        for (String dmg : new String[]{"enuma_elish", "excalibur", "excalibur_judgement", "heavens_chain", "mana_burst", "sword_qi"}) {
+        for (String dmg : new String[]{"caladbolg_mob", "excalibur_replica_mob"}) {
+            JsonObject type = json(res.resolve("data/fatekings/damage_type/" + dmg + ".json"));
+            check(("fatekings." + dmg.substring(0, dmg.length() - 4)).equals(type.get("message_id").getAsString()), dmg + " shares its death messages");
+        }
+        check(armour.contains("\"fatekings:caladbolg\"") && armour.contains("\"fatekings:excalibur_replica\"") && !armour.contains("ubw_sword"),
+            "Caladbolg and the replica pierce armour on characters; the marble's swords do not");
+        for (String dmg : new String[]{"enuma_elish", "excalibur", "excalibur_judgement", "heavens_chain", "mana_burst", "sword_qi", "caladbolg",
+                "excalibur_replica", "ubw_sword", "thrown_blade"}) {
             check(Files.exists(res.resolve("data/fatekings/damage_type/" + dmg + ".json")), "damage type " + dmg);
             check(zh.has("death.attack.fatekings." + dmg) && zh.has("death.attack.fatekings." + dmg + ".player"), "death messages " + dmg);
         }
@@ -326,9 +448,15 @@ public final class RulesCheck {
             "only the judgement type ignores invulnerability (the character types keep each side's share)");
         for (String k : Skills.HERO_HUD) check(zh.has("fatekings.skill." + k), "skill name " + k);
         for (String k : Skills.KNIGHT_HUD) check(zh.has("fatekings.skill." + k), "skill name " + k);
+        for (String k : Skills.ARCHER_HUD) check(zh.has("fatekings.skill." + k), "skill name " + k);
+        for (Voice.Speaker s : Voice.Speaker.values()) check(zh.has("fatekings.speaker." + s.name().toLowerCase(Locale.ROOT)), "speaker name " + s);
+        for (String k : new String[]{"fatekings.title.archer", "fatekings.hud.archer", "entity.fatekings.emiya", "fatekings.screen.arsenal"}) {
+            check(zh.has(k), "lang: " + k);
+        }
         for (JudgementRules.Side s : JudgementRules.Side.values()) check(zh.has("fatekings.side." + s.name().toLowerCase(Locale.ROOT)), "side name " + s);
         JsonObject mod = json(res.resolve("fabric.mod.json"));
         check("fatekings".equals(mod.get("id").getAsString()), "mod id");
+        check(mod.get("name").getAsString().contains("英灵") && zh.get("itemGroup.fatekings.main").getAsString().contains("英灵"), "Fate · 英灵");
         check(mod.getAsJsonObject("suggests").has("sukuna"), "the Gojo x Sukuna mod is optional");
         check(!mod.getAsJsonObject("depends").has("sukuna"), "no hard dependency on it");
         JsonObject compat = json(res.resolve("fatekings.compat.mixins.json"));

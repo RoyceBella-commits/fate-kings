@@ -33,7 +33,7 @@ public final class Regalia {
         Map<EquipmentSlot, ItemStack> kept = new EnumMap<>(EquipmentSlot.class);
         for (EquipmentSlot slot : SLOTS) {
             ItemStack s = p.getItemBySlot(slot);
-            if (FateItems.heroPiece(s) || FateItems.knightPiece(s)) {
+            if (FateItems.regaliaPiece(s)) {
                 kept.put(slot, s.copy());
                 p.setItemSlot(slot, ItemStack.EMPTY);
             }

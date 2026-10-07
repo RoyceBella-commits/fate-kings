@@ -11,7 +11,10 @@
     "WoundHealMixin",
     "EaDropMixin",
     "KeepRegaliaMixin",
-    "KnightHorseMixin"
+    "KnightHorseMixin",
+    "ProjectedSlotMixin",
+    "ProjectedMenuMixin",
+    "ProjectedBundleMixin"
   ],
   "injectors": {
     "defaultRequire": 1

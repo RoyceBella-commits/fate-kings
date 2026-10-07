@@ -29,12 +29,21 @@ public final class Fx {
     public static final int TITLE_HERO = 13;
     public static final int TITLE_KNIGHT = 14;
     public static final int GOLD_FLASH = 15;
+    public static final int ARRIVAL_ARCHER = 16;
+    public static final int TITLE_ARCHER = 17;
+    /** Rho Aias: anchor = its bearer, strength = petals left; duration 0 takes it down. */
+    public static final int RHO_AIAS = 18;
+    /** Structural analysis / projection: a wireframe of light around the anchor. */
+    public static final int TRACE = 19;
 
     public static final int GOLD = 0xFFD34A;
     public static final int RED = 0xC8141E;
     public static final int WIND = 0x9FD3EF;
     public static final int KNIGHT_BLUE = 0x2C57C8;
     public static final int MANA = 0xBFE4FF;
+    public static final int EMBER = 0xFF8A2A;
+    public static final int SHROUD_RED = 0xB3141C;
+    public static final int TRACE_CYAN = 0x7FF0FF;
 
     private Fx() {
     }

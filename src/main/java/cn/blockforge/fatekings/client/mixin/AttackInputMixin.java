@@ -13,5 +13,6 @@ public abstract class AttackInputMixin {
     @Inject(method = "startAttack", at = @At("HEAD"))
     private void fatekings$slash(CallbackInfoReturnable<Boolean> cir) {
         SlashInput.onAttack((Minecraft)(Object)this);
+        cn.blockforge.fatekings.client.TwinInput.onAttack((Minecraft)(Object)this);
     }
 }

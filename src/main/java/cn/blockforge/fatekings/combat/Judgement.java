@@ -82,10 +82,11 @@ public final class Judgement {
             case WHEEL_CANNOT_TURN -> killMahoraga(level, caster, carrier, target, weapon);
             case INSTANT_DEATH -> instantDeath(level, caster, carrier, target);
             case CRIPPLE -> cripple(level, caster, target);
-            case HEAVY_DAMAGE -> hurt(level, target, FateDamage.source(level, weapon == Weapon.EA ? FateDamage.ENUMA_ELISH_MOB : FateDamage.EXCALIBUR_MOB, carrier, caster), KingRules.MOB_DAMAGE);
-            case NPC_BLOW -> woundAvalon(level, target, weapon, side, npcBlow(level, target, characterSource(level, carrier, caster, weapon), KingRules.NPC_PHANTASM_LOSS * multiplier));
+            case HEAVY_DAMAGE -> hurt(level, target, FateDamage.source(level, FateDamage.mobType(weapon), carrier, caster), JudgementRules.mobDamage(weapon));
+            case NPC_BLOW -> woundAvalon(level, target, weapon, side, npcBlow(level, target, characterSource(level, carrier, caster, weapon),
+                JudgementRules.npcLoss(weapon) * multiplier));
             case CHARACTER_DAMAGE -> {
-                float amount = KingRules.ultimateOnCharacter(level.getRandom().nextFloat()) * multiplier;
+                float amount = JudgementRules.characterDamage(weapon, level.getRandom().nextFloat()) * multiplier;
                 yield woundAvalon(level, target, weapon, side, hurt(level, target, characterSource(level, carrier, caster, weapon), amount));
             }
         };
@@ -93,12 +94,21 @@ public final class Judgement {
 
     /** Pierces Infinity and armour; each side's share still applies. */
     private static DamageSource characterSource(ServerLevel level, Entity carrier, LivingEntity caster, Weapon weapon) {
-        return FateDamage.source(level, weapon == Weapon.EA ? FateDamage.ENUMA_ELISH : FateDamage.EXCALIBUR, carrier, caster);
+        return FateDamage.source(level, FateDamage.characterType(weapon), carrier, caster);
     }
 
     private static boolean hurt(ServerLevel level, LivingEntity target, DamageSource source, float amount) {
-        target.setInvulnerableTime(0);
+        fresh(target);
         return target.hurtServer(level, source, amount);
+    }
+
+    /**
+     * Lets the next hit land in full. The hurt cooldown is {@code damageCooldownTime} now, apart
+     * from the entity's invulnerable time: clearing only the latter no longer resets it.
+     */
+    public static void fresh(LivingEntity target) {
+        target.setInvulnerableTime(0);
+        target.damageCooldownTime = 0;
     }
 
     /**
@@ -130,7 +140,7 @@ public final class Judgement {
         if (caster instanceof Player p) target.setLastHurtByPlayer(p, 100);
         else if (caster != null) target.setLastHurtByMob(caster);
         DamageSource source = FateDamage.source(level, FateDamage.JUDGEMENT, carrier, caster);
-        target.setInvulnerableTime(0);
+        fresh(target);
         target.hurtServer(level, source, Float.MAX_VALUE);
         if (target.isAlive() && target.getHealth() > 0.0f) {
             // Anything that shrugged the blow off (phase immunities, damage caps) still falls.
@@ -145,7 +155,7 @@ public final class Judgement {
         // Straight to death without going through its damage handling: no wheel, no adaptation, no last stand.
         if (caster instanceof Player p) target.setLastHurtByPlayer(p, 100);
         else if (caster != null) target.setLastHurtByMob(caster);
-        DamageSource source = FateDamage.source(level, weapon == Weapon.EA ? FateDamage.ENUMA_ELISH : FateDamage.EXCALIBUR, carrier, caster);
+        DamageSource source = FateDamage.source(level, FateDamage.characterType(weapon), carrier, caster);
         target.setHealth(0.0f);
         target.die(source);
         Component msg = Component.translatable("fatekings.hint.wheel_cannot_turn").withStyle(ChatFormatting.GOLD);
@@ -153,7 +163,13 @@ public final class Judgement {
             if (p.distanceToSqr(target) < 96.0 * 96.0) FateNet.actionBar(p, msg);
         }
         level.playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.BEACON_DEACTIVATE, SoundSource.HOSTILE, 2.0f, 0.5f);
-        if (caster != null) VoicePlayer.say(caster, weapon == Weapon.EA ? Voice.GIL_KILL_MAHORAGA : Voice.SABER_KILL_MAHORAGA);
+        if (caster != null) {
+            VoicePlayer.say(caster, switch (weapon) {
+                case EA -> Voice.GIL_KILL_MAHORAGA;
+                case CALADBOLG -> Voice.EMIYA_KILL_MAHORAGA;
+                default -> Voice.SABER_KILL_MAHORAGA;
+            });
+        }
         return true;
     }
 

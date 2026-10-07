@@ -14,12 +14,21 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** First person: the held Excalibur cuts along the stroke's angle. */
+/** First person: the held Excalibur cuts along the stroke's angle; Kanshou and Bakuya move through their stroke in both hands. */
 @Mixin(FirstPersonHandsAndItemsRenderer.class)
 public abstract class FirstPersonSwingMixin {
     @Inject(method = "applyItemArmAttackTransform", at = @At("HEAD"), cancellable = true)
     private void fatekings$stroke(PoseStack pose, HumanoidArm arm, float progress, CallbackInfo ci) {
         var p = Minecraft.getInstance().player;
+        if (p != null && ClientKingState.king == KingRules.ARCHER && FateItems.twinSword(p.getMainHandItem())) {
+            ClientSwings.Twin twin = ClientSwings.twin(p.getId());
+            if (twin != null) {
+                cn.blockforge.fatekings.client.KingPoses.twinFirstPerson(pose, arm == HumanoidArm.RIGHT ? 1.0f : -1.0f, arm == p.getMainArm(),
+                    twin.step(), twin.progress());
+                ci.cancel();
+            }
+            return;
+        }
         if (p == null || ClientKingState.king != KingRules.KNIGHT || !p.getMainHandItem().is(FateItems.EXCALIBUR)) return;
         Float roll = ClientSwings.roll(p.getId());
         if (roll == null) return;

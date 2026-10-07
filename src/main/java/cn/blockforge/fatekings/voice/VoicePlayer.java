@@ -67,9 +67,11 @@ public final class VoicePlayer {
     }
 
     private static void subtitle(ServerLevel level, LivingEntity speaker, Voice line) {
-        boolean gil = line.speaker == Voice.Speaker.GILGAMESH;
-        Component name = Component.translatable(gil ? "fatekings.speaker.gilgamesh" : "fatekings.speaker.artoria")
-            .withStyle(gil ? ChatFormatting.GOLD : ChatFormatting.AQUA);
+        Component name = switch (line.speaker) {
+            case GILGAMESH -> Component.translatable("fatekings.speaker.gilgamesh").withStyle(ChatFormatting.GOLD);
+            case ARTORIA -> Component.translatable("fatekings.speaker.artoria").withStyle(ChatFormatting.AQUA);
+            case EMIYA -> Component.translatable("fatekings.speaker.emiya").withStyle(ChatFormatting.RED);
+        };
         Component text = Component.empty().append(name).append(Component.literal("：「").withStyle(ChatFormatting.GRAY))
             .append(Component.translatable(line.key()).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("」").withStyle(ChatFormatting.GRAY));

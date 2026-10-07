@@ -28,7 +28,9 @@ public class ExcaliburWaveRenderer extends FxEntityRenderer<ExcaliburWaveEntity>
         Vec3 side = dir.cross(up);
         Vec3 plane = side.lengthSqr() < 1.0E-4 ? FxDraw.basis(dir)[0] : side.normalize().cross(dir).normalize();
         Vec3 h = plane.scale(w * 0.5);
-        int core = FxDraw.alpha(0.95f * fade, 0xFFF7DA), edge = FxDraw.alpha(0.0f, 0xFFE38A), mid = FxDraw.alpha(0.6f * fade, 0xFFE38A);
+        // A replica's light is paler, greyer: a copy of the star's light.
+        int hot = e.replica() ? 0xE8ECF4 : 0xFFF7DA, warm = e.replica() ? 0xB8C0D0 : 0xFFE38A;
+        int core = FxDraw.alpha(0.95f * fade, hot), edge = FxDraw.alpha(0.0f, warm), mid = FxDraw.alpha(0.6f * fade, warm);
         FxDraw.quad(pose, b, Vec3.ZERO, end, end.add(h), h, core, core, edge, edge);
         FxDraw.quad(pose, b, Vec3.ZERO, end, end.subtract(h), h.scale(-1.0), core, core, edge, edge);
         FxDraw.tube(pose, b, Vec3.ZERO, end, w * 0.12f, w * 0.18f, 12, core, mid, 0.0f);

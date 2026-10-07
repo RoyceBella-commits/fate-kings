@@ -85,6 +85,8 @@ public final class DamageHooks {
             }
         }
         if (entity instanceof KingNpcEntity npc) npc.onHurt(source, taken);
+        // EMIYA has seen the weapon that struck him: it goes to the Hill of Swords.
+        if (Kings.isArcher(entity)) cn.blockforge.fatekings.archer.Projection.learnFrom(entity, source);
         // Mana Burst: every close blow of the knight crackles and throws 20% further.
         if (attacker instanceof LivingEntity knight && Kings.isKnight(knight) && attacker == source.getDirectEntity()
             && entity.level() instanceof ServerLevel level && taken > 0.0f) {

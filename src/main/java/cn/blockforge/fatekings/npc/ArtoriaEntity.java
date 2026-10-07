@@ -100,13 +100,18 @@ public class ArtoriaEntity extends KingNpcEntity {
 
     @Override
     public boolean canHarm(LivingEntity t) {
-        if (t == this || !t.isAlive()) return false;
+        if (t == this || !t.isAlive() || t instanceof EmiyaEntity) return false;
         if (spared(t)) return false;
         if (t instanceof GilgameshEntity) return true;
         Side side = Sides.side(t);
         if (side == Side.SUKUNA || side == Side.MAHORAGA) return !(t instanceof Player);
         // Protects villagers and players: monsters within 16 blocks.
         return t instanceof Enemy && this.distanceToSqr(t) < 16.0 * 16.0;
+    }
+
+    @Override
+    protected Class<?>[] neverRetaliate() {
+        return new Class<?>[]{EmiyaEntity.class};
     }
 
     private boolean spared(LivingEntity t) {
@@ -275,25 +280,7 @@ public class ArtoriaEntity extends KingNpcEntity {
 
     /** No villager, iron golem, pet or bed / chest / crafting table along the whole path. */
     private boolean clear(ServerLevel level, Vec3 origin, Vec3 dir) {
-        double w = KingRules.excaliburWidth(60) / 2.0 + 1.0;
-        Vec3 end = origin.add(dir.scale(KingRules.EXCALIBUR_RANGE));
-        for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, new AABB(origin, end).inflate(w), e -> e != this)) {
-            boolean protectedOne = e instanceof AbstractVillager || e instanceof IronGolem || e instanceof OwnableEntity o && o.getOwner() != null;
-            if (!protectedOne) continue;
-            Vec3 c = e.getBoundingBox().getCenter();
-            double t = c.subtract(origin).dot(dir);
-            if (t > 0 && c.distanceTo(origin.add(dir.scale(t))) < w) return false;
-        }
-        for (double t = 4.0; t < KingRules.EXCALIBUR_RANGE; t += 2.0) {
-            Vec3 p = origin.add(dir.scale(t));
-            BlockPos pos = BlockPos.containing(p);
-            if (!level.isLoaded(pos)) break;
-            for (BlockPos q : BlockPos.betweenClosed(pos.offset(-2, -2, -2), pos.offset(2, 2, 2))) {
-                BlockState s = level.getBlockState(q);
-                if (s.getBlock() instanceof BedBlock || s.getBlock() instanceof ChestBlock || s.getBlock() instanceof CraftingTableBlock) return false;
-            }
-        }
-        return true;
+        return cn.blockforge.fatekings.combat.LineOfFire.clear(level, this, origin, dir, KingRules.EXCALIBUR_RANGE, KingRules.excaliburWidth(60) / 2.0 + 1.0);
     }
 
     private void lookForRival(ServerLevel level) {

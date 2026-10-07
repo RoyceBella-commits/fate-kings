@@ -1,6 +1,7 @@
 package cn.blockforge.fatekings.entity;
 
 import cn.blockforge.fatekings.combat.Fx;
+import cn.blockforge.fatekings.combat.Judgement;
 import cn.blockforge.fatekings.combat.Terrain;
 import cn.blockforge.fatekings.compat.JjkCompat;
 import cn.blockforge.fatekings.king.KingRules;
@@ -114,7 +115,7 @@ public class SwordQiEntity extends Entity {
                 return;
             }
             if (!this.hit.add(e.getId())) continue;
-            e.setInvulnerableTime(0);
+            Judgement.fresh(e);
             DamageSource source = FateDamage.source(level, FateDamage.SWORD_QI, this, owner);
             e.hurtServer(level, source, KingRules.SWORD_QI_DAMAGE);
             Fx.particles(level, ParticleTypes.END_ROD, e.getBoundingBox().getCenter(), 6, 0.2, 0.05);

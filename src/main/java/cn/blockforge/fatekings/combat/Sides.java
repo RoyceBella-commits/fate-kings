@@ -26,11 +26,13 @@ public final class Sides {
             if (route == 1) return Side.GOJO;
             if (king == KingRules.HERO) return Side.HERO;
             if (king == KingRules.KNIGHT) return Side.KNIGHT;
+            if (king == KingRules.ARCHER) return Side.ARCHER;
             if (route == 2) return Side.SUKUNA;
             return Side.PLAYER;
         }
         if (king == KingRules.HERO) return Side.HERO;
         if (king == KingRules.KNIGHT) return Side.KNIGHT;
+        if (king == KingRules.ARCHER) return Side.ARCHER;
         if (JjkCompat.is(e, JjkCompat.GOJO)) return Side.GOJO;
         if (JjkCompat.is(e, JjkCompat.SUKUNA)) return Side.SUKUNA;
         if (JjkCompat.is(e, JjkCompat.MAHORAGA)) return Side.MAHORAGA;
@@ -102,7 +104,10 @@ public final class Sides {
             || s.is(net.minecraft.world.item.Items.CROSSBOW) || s.is(net.minecraft.world.item.Items.TRIDENT) || s.is(net.minecraft.world.item.Items.MACE)
             || s.is(cn.blockforge.fatekings.registry.FateItems.EXCALIBUR) || s.is(cn.blockforge.fatekings.registry.FateItems.EA)
             || s.is(cn.blockforge.fatekings.registry.FateItems.BAB_ILU) || s.is(cn.blockforge.fatekings.registry.FateItems.GATE_OF_BABYLON)
-            || s.is(cn.blockforge.fatekings.registry.FateItems.ENKIDU);
+            || s.is(cn.blockforge.fatekings.registry.FateItems.ENKIDU) || s.is(cn.blockforge.fatekings.registry.FateItems.BLACK_BOW)
+            || s.is(cn.blockforge.fatekings.registry.FateItems.KANSHOU) || s.is(cn.blockforge.fatekings.registry.FateItems.BAKUYA)
+            || s.is(cn.blockforge.fatekings.registry.FateItems.UNLIMITED_BLADE_WORKS) || s.is(cn.blockforge.fatekings.registry.FateItems.EXCALIBUR_REPLICA)
+            || cn.blockforge.fatekings.archer.Projection.isWeapon(s);
     }
 
     public static String sideKey(Side side) {

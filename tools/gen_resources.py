@@ -23,8 +23,26 @@ def model(name):
 GENERATED = ["gate_of_babylon", "enkidu", "vimana", "treasury_elixir", "grail_mud", "warhorse", "knight_barding",
              "golden_crown", "golden_chestplate", "golden_greaves", "golden_sabatons",
              "knight_ribbon", "knight_breastplate", "knight_skirt", "knight_boots",
-             "gilgamesh_spawn_egg", "artoria_spawn_egg"]
-HANDHELD = ["bab_ilu", "ea", "ea_charging", "excalibur_air", "excalibur_revealed", "excalibur_release"]
+             "gilgamesh_spawn_egg", "artoria_spawn_egg",
+             "shroud_headpiece", "shroud_coat", "shroud_leggings", "shroud_boots", "unlimited_blade_works", "emiya_spawn_egg"]
+HANDHELD = ["bab_ilu", "ea", "ea_charging", "excalibur_air", "excalibur_revealed", "excalibur_release",
+            "kanshou", "bakuya", "sword_arrow", "caladbolg_arrow"]
+# The black bow and its draw: shown like the vanilla bow.
+BOW = ["black_bow", "black_bow_pulling_0", "black_bow_pulling_1", "black_bow_caladbolg"]
+# A grey-blue tint on Excalibur's own textures: the replica EMIYA traces.
+REPLICA_TINT = -0x3F3720  # 0xFFC0C8E0
+
+
+def overedge(name):
+    """Kanshou / Bakuya grown into wings of steel: the handheld model, 1.6 times as large."""
+    def d(rot, tr, s):
+        return {"rotation": rot, "translation": tr, "scale": [s, s, s]}
+    k = 1.6
+    return {"parent": "minecraft:item/handheld", "textures": {"layer0": f"{NS}:item/{name}"}, "display": {
+        "thirdperson_righthand": d([0, -90, 55], [0, 4.0 * k, 0.5], 0.85 * k),
+        "thirdperson_lefthand": d([0, 90, -55], [0, 4.0 * k, 0.5], 0.85 * k),
+        "firstperson_righthand": d([0, -90, 25], [1.13, 3.2 * k, 1.13], 0.68 * k),
+        "firstperson_lefthand": d([0, 90, -25], [1.13, 3.2 * k, 1.13], 0.68 * k)}}
 
 
 def items():
@@ -47,6 +65,28 @@ def items():
                      "fallback": {"type": "minecraft:select", "property": "minecraft:custom_model_data", "index": 0,
                                   "cases": [{"when": "air", "model": model("excalibur_air")}],
                                   "fallback": model("excalibur_revealed")}}}})
+    for name in BOW:
+        write(A / "models" / "item" / f"{name}.json", {"parent": "minecraft:item/bow", "textures": {"layer0": f"{NS}:item/{name}"}})
+    # Drawn: pulling for the first 0.3 s, fully drawn, then the spiral sword nocked once Caladbolg is ready (1.5 s).
+    write(A / "items" / "black_bow.json", {"model": {
+        "type": "minecraft:condition", "property": "minecraft:using_item",
+        "on_false": model("black_bow"),
+        "on_true": {"type": "minecraft:range_dispatch", "property": "minecraft:use_duration", "scale": 1.0 / 30.0,
+                    "entries": [{"threshold": 0.2, "model": model("black_bow_pulling_1")},
+                                {"threshold": 1.0, "model": model("black_bow_caladbolg")}],
+                    "fallback": model("black_bow_pulling_0")}}})
+    for name in ("kanshou", "bakuya"):
+        write(A / "models" / "item" / f"{name}_overedge.json", overedge(name))
+        write(A / "items" / f"{name}.json", {"model": {
+            "type": "minecraft:select", "property": "minecraft:custom_model_data", "index": 0,
+            "cases": [{"when": "overedge", "model": model(f"{name}_overedge")}], "fallback": model(name)}})
+    # Item models without an item: the look of projected arrows and of Caladbolg II in flight.
+    for name in ("sword_arrow", "caladbolg_arrow"):
+        write(A / "items" / f"{name}.json", {"model": model(name)})
+    tinted = lambda m: {"type": "minecraft:model", "model": f"{NS}:item/{m}", "tints": [{"type": "minecraft:constant", "value": REPLICA_TINT}]}
+    write(A / "items" / "excalibur_replica.json", {"model": {
+        "type": "minecraft:condition", "property": "minecraft:using_item",
+        "on_true": tinted("excalibur_release"), "on_false": tinted("excalibur_revealed")}})
 
 
 def equipment():
@@ -55,13 +95,18 @@ def equipment():
     write(A / "equipment" / "knight_regalia.json", {"layers": {
         "humanoid": [{"texture": f"{NS}:knight_regalia"}], "humanoid_leggings": [{"texture": f"{NS}:knight_regalia"}]}})
     write(A / "equipment" / "knight_barding.json", {"layers": {"horse_body": [{"texture": f"{NS}:knight_barding"}]}})
+    write(A / "equipment" / "red_shroud.json", {"layers": {
+        "humanoid": [{"texture": f"{NS}:red_shroud"}], "humanoid_leggings": [{"texture": f"{NS}:red_shroud"}]}})
 
 
 VOICES = ["gil_spawn", "gil_arrogant", "gil_displeased", "gil_serious", "gil_volley", "gil_chain", "gil_unlock", "gil_ea_drawn",
           "gil_ea_chant", "gil_ea_release", "gil_laugh", "gil_hurt", "gil_defeat", "gil_defeat_saber", "gil_victory",
           "saber_spawn", "saber_salute", "saber_full_power", "saber_strike_air", "saber_release_call", "saber_excalibur_chant",
           "saber_excalibur_release", "saber_vs_gil", "saber_vs_sukuna", "saber_avalon", "saber_last_stand", "saber_hurt",
-          "saber_defeat", "saber_victory"]
+          "saber_defeat", "saber_victory",
+          "emiya_spawn", "emiya_start", "emiya_full_power", "emiya_head_on", "emiya_trace_on", "emiya_finish_it", "emiya_forge",
+          "emiya_ubw_chant", "emiya_ubw_release", "emiya_twin", "emiya_there", "emiya_got_you", "emiya_hurt", "emiya_defeat",
+          "emiya_victory"]
 
 
 def sounds():
@@ -78,6 +123,13 @@ DAMAGE = {
     "heavens_chain": {"message_id": f"{NS}.heavens_chain", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
     "mana_burst": {"message_id": f"{NS}.mana_burst", "scaling": "never", "exhaustion": 0.1, "effects": "hurt"},
     "sword_qi": {"message_id": f"{NS}.sword_qi", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
+    # EMIYA. On characters (pierce armour) and on creatures (armour applies), sharing the death messages.
+    "caladbolg": {"message_id": f"{NS}.caladbolg", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
+    "caladbolg_mob": {"message_id": f"{NS}.caladbolg", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
+    "excalibur_replica": {"message_id": f"{NS}.excalibur_replica", "scaling": "never", "exhaustion": 0.0, "effects": "burning"},
+    "excalibur_replica_mob": {"message_id": f"{NS}.excalibur_replica", "scaling": "never", "exhaustion": 0.0, "effects": "burning"},
+    "ubw_sword": {"message_id": f"{NS}.ubw_sword", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
+    "thrown_blade": {"message_id": f"{NS}.thrown_blade", "scaling": "never", "exhaustion": 0.0, "effects": "hurt"},
 }
 
 
@@ -89,8 +141,10 @@ def data():
                 "bypasses_effects", "no_knockback"):
         write(D / "minecraft" / "tags" / "damage_type" / f"{tag}.json", {"replace": False, "values": judged})
     write(D / "minecraft" / "tags" / "damage_type" / "bypasses_armor.json", {"replace": False,
-          "values": judged + [f"{NS}:enuma_elish", f"{NS}:excalibur"]})
+          "values": judged + [f"{NS}:enuma_elish", f"{NS}:excalibur", f"{NS}:caladbolg", f"{NS}:excalibur_replica"]})
     write(D / NS / "tags" / "item" / "no_repair.json", {"replace": False, "values": []})
+    write(D / NS / "tags" / "item" / "unprojectable.json", {"replace": False, "values": [
+        f"{NS}:{n}" for n in ("ea", "bab_ilu", "gate_of_babylon", "enkidu", "vimana", "unlimited_blade_works", "black_bow", "excalibur_replica")]})
     write(D / NS / "tags" / "entity_type" / "gojo_side.json", {"replace": False, "values": [{"id": "sukuna:gojo", "required": False}]})
     write(D / NS / "tags" / "entity_type" / "sukuna_side.json", {"replace": False, "values": [
         {"id": "sukuna:sukuna", "required": False}, {"id": "sukuna:mahoraga", "required": False}]})
@@ -443,6 +497,210 @@ EN = {
     "fatekings.voice.saber_kill_mahoraga": "Whatever you adapt to, you cannot adapt to the light of the stars.",
 }
 
+
+# ---- EMIYA (1.1.0) ----
+ZH.update({
+    "itemGroup.fatekings.main": "Fate · 英灵",
+    "item.fatekings.shroud_headpiece": "红色圣骸布·额饰",
+    "item.fatekings.shroud_coat": "红色圣骸布·外套",
+    "item.fatekings.shroud_leggings": "红色圣骸布·战裤",
+    "item.fatekings.shroud_boots": "红色圣骸布·战靴",
+    "item.fatekings.black_bow": "黑弓",
+    "item.fatekings.black_bow.desc": "弓兵的弓。射出的不是箭，而是投影出来的剑。",
+    "item.fatekings.black_bow.use": "短按：追踪箭（可连续点按）· 按住 1.5 秒后松开：伪·螺旋剑 · 潜行+右键：炽天覆七重圆环",
+    "item.fatekings.kanshou": "干将",
+    "item.fatekings.kanshou.desc": "阴剑干将。与莫邪是一对夫妇剑，彼此吸引。",
+    "item.fatekings.kanshou.use": "左键：六段双刀连击 · 右键：投掷双刀（回旋飞回）· 潜行+右键：鹤翼三连",
+    "item.fatekings.bakuya": "莫邪",
+    "item.fatekings.bakuya.desc": "阳剑莫邪。与干将是一对夫妇剑，彼此吸引。",
+    "item.fatekings.unlimited_blade_works": "无限剑制",
+    "item.fatekings.unlimited_blade_works.desc": "体は剣で出来ている——身体是由剑构成的。",
+    "item.fatekings.unlimited_blade_works.use": "短按：解析看到的武器 / 投影上次选的武器 · 潜行+右键：剑之丘 · 按住 3 秒：咏唱并展开固有结界",
+    "item.fatekings.excalibur_replica": "誓约胜利之剑（仿造品）",
+    "item.fatekings.excalibur_replica.desc": "投影出来的圣剑。光芒不及真品，用一次就会碎。",
+    "item.fatekings.excalibur_replica.use": "按住 1.5 秒后松开：仿造的真名解放（之后碎裂）",
+    "item.fatekings.emiya_spawn_egg": "卫宫刷怪蛋",
+    "entity.fatekings.emiya": "卫宫",
+    "entity.fatekings.projected_arrow": "投影之箭",
+    "entity.fatekings.caladbolg": "伪·螺旋剑",
+    "entity.fatekings.thrown_blade": "飞行的夫妇剑",
+    "entity.fatekings.unlimited_blade_works": "无限剑制",
+    "entity.fatekings.ubw_sword": "剑之丘的剑",
+    "death.attack.fatekings.caladbolg": "%1$s 被伪·螺旋剑贯穿了",
+    "death.attack.fatekings.caladbolg.player": "%1$s 被 %2$s 的伪·螺旋剑贯穿了",
+    "death.attack.fatekings.excalibur_replica": "%1$s 被仿造的圣剑之光吞没了",
+    "death.attack.fatekings.excalibur_replica.player": "%1$s 被 %2$s 投影的圣剑之光吞没了",
+    "death.attack.fatekings.ubw_sword": "%1$s 倒在了剑之丘上",
+    "death.attack.fatekings.ubw_sword.player": "%1$s 倒在了 %2$s 的剑之丘上",
+    "death.attack.fatekings.thrown_blade": "%1$s 被夫妇剑斩倒了",
+    "death.attack.fatekings.thrown_blade.player": "%1$s 被 %2$s 的干将莫邪斩倒了",
+    "fatekings.speaker.emiya": "卫宫",
+    "fatekings.title.archer": "红 Archer，回应召唤",
+    "fatekings.hud.archer": "红 Archer · 卫宫",
+    "fatekings.hud.ubw": "无限剑制 %s 秒",
+    "fatekings.hud.rho_aias": "炽天覆 剩 %s 片（%s 秒）",
+    "fatekings.hud.projections": "投影品 %s / %s",
+    "fatekings.skill.bow_tap": "追踪箭",
+    "fatekings.skill.caladbolg": "伪·螺旋剑",
+    "fatekings.skill.rho_aias": "炽天覆七重圆环",
+    "fatekings.skill.twin_throw": "投掷夫妇剑",
+    "fatekings.skill.crane_wing": "鹤翼三连",
+    "fatekings.skill.trace": "投影魔术",
+    "fatekings.skill.ubw": "无限剑制",
+    "fatekings.skill.excalibur_replica": "仿造的圣剑",
+    "fatekings.side.archer": "红 Archer",
+    "fatekings.hint.archer_only": "只有穿齐红色圣骸布才能使用",
+    "fatekings.hint.unprojectable": "%s 是独一无二的宝具，无法投影",
+    "tag.item.fatekings.unprojectable": "无法投影",
+    "fatekings.hint.not_a_weapon": "那不是武器，无法解析",
+    "fatekings.hint.analysed": "结构解析完成：%s 已记入剑之丘",
+    "fatekings.hint.arsenal_forgot": "结构解析完成：%s（剑之丘已满，忘掉了最久没用的一把）",
+    "fatekings.hint.arsenal_empty": "剑之丘里还没有武器：先对准一把武器短按解析",
+    "fatekings.hint.inventory_full": "背包满了，无法投影",
+    "fatekings.hint.projected": "投影，开始——%s",
+    "fatekings.hint.replica_shattered": "仿造品承受不住，碎掉了",
+    "fatekings.hint.ubw_clash": "固有结界与领域相撞！最多再维持 20 秒",
+    "fatekings.hint.ubw_clash_first": "固有结界与领域相撞！先展开的一方多维持 2 秒",
+    "fatekings.hint.ubw_wall": "无限剑制的边界挡住了你",
+    "fatekings.hint.ubw_torn": "固有结界被「乖离剑」撕裂了",
+    "fatekings.hint.ubw_active": "固有结界已经展开",
+    "fatekings.hint.infinity_caladbolg": "无下限被「伪·螺旋剑」扭断",
+    "fatekings.hint.infinity_ubw": "无下限挡不住剑之丘的剑雨",
+    "fatekings.warn.caladbolg": "直感：伪·螺旋剑",
+    "fatekings.warn.ubw": "直感：固有结界·无限剑制",
+    "fatekings.warn.excalibur_replica": "直感：仿造的誓约胜利之剑",
+    "fatekings.tooltip.projected": "投影品：%s 秒后消散",
+    "fatekings.tooltip.partner": "投影出的另一把夫妇剑",
+    "fatekings.screen.arsenal": "剑之丘",
+    "fatekings.screen.arsenal.title": "剑之丘  %s / %s",
+    "fatekings.screen.arsenal.hint": "左键：投影到快捷栏 · 右键：遗忘",
+    "fatekings.voice.gil_faker": "赝作者（Faker）……竟敢在本王面前摆弄那些赝品！",
+    "fatekings.voice.emiya_spawn": "从者Archer。回应召唤前来报到。",
+    "fatekings.voice.emiya_start": "真是不吸取教训的家伙。",
+    "fatekings.voice.emiya_full_power": "我会全力与你对抗。",
+    "fatekings.voice.emiya_head_on": "从正面上？　哼，放过我吧。",
+    "fatekings.voice.emiya_trace_on": "投影，开始（Trace on）！",
+    "fatekings.voice.emiya_finish_it": "趁这个机会，彻底解决掉吧。",
+    "fatekings.voice.emiya_forge": "……这样啊。那就点燃冶炼之火吧。",
+    "fatekings.voice.emiya_ubw_chant": "I am the bone of my sword.（身体是由剑构成的。）",
+    "fatekings.voice.emiya_ubw_release": "So as I pray, unlimited blade works.（如我所祈——无限剑制。）",
+    "fatekings.voice.emiya_twin": "干将，莫邪！",
+    "fatekings.voice.emiya_there": "就是那里！",
+    "fatekings.voice.emiya_got_you": "拿下了……！",
+    "fatekings.voice.emiya_hurt": "真行啊……！",
+    "fatekings.voice.emiya_defeat": "是我……输了……",
+    "fatekings.voice.emiya_victory": "决心与觉悟都不够呢。",
+    "fatekings.voice.emiya_caladbolg": "我的骨子里是扭曲的——伪·螺旋剑（Caladbolg II）！",
+    "fatekings.voice.emiya_rho_aias": "炽天覆七重圆环（Rho Aias）！",
+    "fatekings.voice.emiya_crane_wing": "鹤翼三连——！",
+    "fatekings.voice.emiya_broken_phantasm": "Broken Phantasm（坏掉的幻想）。",
+    "fatekings.voice.emiya_full_open": "全投影连续层写——Sword barrel full open！",
+    "fatekings.voice.emiya_vs_gil": "英雄王——武器的储备还充足吗？",
+    "fatekings.voice.emiya_kill_mahoraga": "适应？那也得先活过这一箭。",
+    "fatekings.voice.emiya_replica": "投影开始——誓约胜利之剑……果然，只是赝品啊。",
+    "fatekings.voice.emiya_analysis": "结构解析……完成。",
+})
+EN.update({
+    "itemGroup.fatekings.main": "Fate · Heroic Spirits",
+    "item.fatekings.shroud_headpiece": "Red Shroud Headpiece",
+    "item.fatekings.shroud_coat": "Red Shroud Coat",
+    "item.fatekings.shroud_leggings": "Red Shroud Trousers",
+    "item.fatekings.shroud_boots": "Red Shroud Boots",
+    "item.fatekings.black_bow": "Black Bow",
+    "item.fatekings.black_bow.desc": "The Archer's bow. What it looses are not arrows but projected swords.",
+    "item.fatekings.black_bow.use": "Tap: homing arrows (tap again and again) · Hold 1.5 s and release: Caladbolg II · Sneak: Rho Aias",
+    "item.fatekings.kanshou": "Kanshou",
+    "item.fatekings.kanshou.desc": "Kanshou, the yin blade. With Bakuya, a married pair that call to each other.",
+    "item.fatekings.kanshou.use": "Attack: six-stroke twin combo · Use: throw the pair (they come back) · Sneak: Crane Wing Three Strikes",
+    "item.fatekings.bakuya": "Bakuya",
+    "item.fatekings.bakuya.desc": "Bakuya, the yang blade. With Kanshou, a married pair that call to each other.",
+    "item.fatekings.unlimited_blade_works": "Unlimited Blade Works",
+    "item.fatekings.unlimited_blade_works.desc": "I am the bone of my sword.",
+    "item.fatekings.unlimited_blade_works.use": "Tap: analyse the weapon in sight / project the last one · Sneak: the Hill of Swords · Hold 3 s: the aria and the reality marble",
+    "item.fatekings.excalibur_replica": "Excalibur (Replica)",
+    "item.fatekings.excalibur_replica.desc": "A projected holy sword. Its light falls short of the true one, and it breaks after one release.",
+    "item.fatekings.excalibur_replica.use": "Hold 1.5 s and release: a traced true name (then it shatters)",
+    "item.fatekings.emiya_spawn_egg": "EMIYA Spawn Egg",
+    "entity.fatekings.emiya": "EMIYA",
+    "entity.fatekings.projected_arrow": "Projected Arrow",
+    "entity.fatekings.caladbolg": "Caladbolg II",
+    "entity.fatekings.thrown_blade": "Thrown Married Blade",
+    "entity.fatekings.unlimited_blade_works": "Unlimited Blade Works",
+    "entity.fatekings.ubw_sword": "Sword of the Hill",
+    "death.attack.fatekings.caladbolg": "%1$s was pierced by Caladbolg II",
+    "death.attack.fatekings.caladbolg.player": "%1$s was pierced by %2$s's Caladbolg II",
+    "death.attack.fatekings.excalibur_replica": "%1$s was swallowed by a traced holy light",
+    "death.attack.fatekings.excalibur_replica.player": "%1$s was swallowed by %2$s's traced Excalibur",
+    "death.attack.fatekings.ubw_sword": "%1$s fell on the Hill of Swords",
+    "death.attack.fatekings.ubw_sword.player": "%1$s fell on %2$s's Hill of Swords",
+    "death.attack.fatekings.thrown_blade": "%1$s was cut down by the married blades",
+    "death.attack.fatekings.thrown_blade.player": "%1$s was cut down by %2$s's Kanshou and Bakuya",
+    "fatekings.speaker.emiya": "EMIYA",
+    "fatekings.title.archer": "The Red Archer answers the summons",
+    "fatekings.hud.archer": "Red Archer · EMIYA",
+    "fatekings.hud.ubw": "Unlimited Blade Works %s s",
+    "fatekings.hud.rho_aias": "Rho Aias: %s petals (%s s)",
+    "fatekings.hud.projections": "Projections %s / %s",
+    "fatekings.skill.bow_tap": "Homing Arrow",
+    "fatekings.skill.caladbolg": "Caladbolg II",
+    "fatekings.skill.rho_aias": "Rho Aias",
+    "fatekings.skill.twin_throw": "Thrown Blades",
+    "fatekings.skill.crane_wing": "Crane Wing",
+    "fatekings.skill.trace": "Projection",
+    "fatekings.skill.ubw": "Unlimited Blade Works",
+    "fatekings.skill.excalibur_replica": "Traced Excalibur",
+    "fatekings.side.archer": "Red Archer",
+    "fatekings.hint.archer_only": "Only the bearer of the full Red Shroud can use this",
+    "fatekings.hint.unprojectable": "%s is one of a kind: it cannot be projected",
+    "tag.item.fatekings.unprojectable": "Cannot be projected",
+    "fatekings.hint.not_a_weapon": "That is no weapon to analyse",
+    "fatekings.hint.analysed": "Structural analysis complete: %s added to the Hill of Swords",
+    "fatekings.hint.arsenal_forgot": "Structural analysis complete: %s (the Hill is full; the least used was forgotten)",
+    "fatekings.hint.arsenal_empty": "The Hill of Swords is empty: tap while looking at a weapon to analyse it",
+    "fatekings.hint.inventory_full": "Inventory full: nothing to project into",
+    "fatekings.hint.projected": "Trace on: %s",
+    "fatekings.hint.replica_shattered": "The replica could not bear it and shattered",
+    "fatekings.hint.ubw_clash": "The reality marble meets a domain! At most 20 s more",
+    "fatekings.hint.ubw_clash_first": "The reality marble meets a domain! Opened first: 2 s more",
+    "fatekings.hint.ubw_wall": "The wall of Unlimited Blade Works holds you in",
+    "fatekings.hint.ubw_torn": "The reality marble was torn apart by the Sword of Rupture",
+    "fatekings.hint.ubw_active": "The reality marble is already unfolded",
+    "fatekings.hint.infinity_caladbolg": "Infinity twisted apart by Caladbolg II",
+    "fatekings.hint.infinity_ubw": "Infinity cannot hold back the swords of the Hill",
+    "fatekings.warn.caladbolg": "Instinct: Caladbolg II",
+    "fatekings.warn.ubw": "Instinct: Reality Marble, Unlimited Blade Works",
+    "fatekings.warn.excalibur_replica": "Instinct: a traced Excalibur",
+    "fatekings.tooltip.projected": "Projection: fades in %s s",
+    "fatekings.tooltip.partner": "The projected twin blade",
+    "fatekings.screen.arsenal": "Hill of Swords",
+    "fatekings.screen.arsenal.title": "Hill of Swords  %s / %s",
+    "fatekings.screen.arsenal.hint": "Left click: project into the hotbar · Right click: forget",
+    "fatekings.voice.gil_faker": "Faker... you dare parade your counterfeits before me!",
+    "fatekings.voice.emiya_spawn": "Servant Archer. I have answered your summons.",
+    "fatekings.voice.emiya_start": "You never learn, do you.",
+    "fatekings.voice.emiya_full_power": "I'll face you with everything I have.",
+    "fatekings.voice.emiya_head_on": "Head-on? Heh, spare me.",
+    "fatekings.voice.emiya_trace_on": "Trace on!",
+    "fatekings.voice.emiya_finish_it": "While I'm at it, I'll finish this for certain.",
+    "fatekings.voice.emiya_forge": "...I see. Then let me light the fire of the forge.",
+    "fatekings.voice.emiya_ubw_chant": "I am the bone of my sword.",
+    "fatekings.voice.emiya_ubw_release": "So as I pray, unlimited blade works.",
+    "fatekings.voice.emiya_twin": "Kanshou, Bakuya!",
+    "fatekings.voice.emiya_there": "There!",
+    "fatekings.voice.emiya_got_you": "Got you!",
+    "fatekings.voice.emiya_hurt": "Not bad...!",
+    "fatekings.voice.emiya_defeat": "It's... my loss...",
+    "fatekings.voice.emiya_victory": "Not enough resolve, nor enough readiness.",
+    "fatekings.voice.emiya_caladbolg": "My bones are twisted and wound - Caladbolg II!",
+    "fatekings.voice.emiya_rho_aias": "Rho Aias!",
+    "fatekings.voice.emiya_crane_wing": "Crane Wing Three Strikes!",
+    "fatekings.voice.emiya_broken_phantasm": "Broken Phantasm.",
+    "fatekings.voice.emiya_full_open": "Sword barrel full open!",
+    "fatekings.voice.emiya_vs_gil": "King of Heroes - is your stock of weapons enough?",
+    "fatekings.voice.emiya_kill_mahoraga": "Adapt? Survive this arrow first.",
+    "fatekings.voice.emiya_replica": "Trace on - Excalibur... in the end, only a fake.",
+    "fatekings.voice.emiya_analysis": "Structural analysis... complete.",
+})
 
 def lang():
     missing = set(ZH) ^ set(EN)

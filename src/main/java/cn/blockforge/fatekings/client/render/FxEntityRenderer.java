@@ -30,6 +30,16 @@ public abstract class FxEntityRenderer<T extends Entity> extends EntityRenderer<
         public final Quaternionf itemRotation = new Quaternionf();
         public Vec3 itemOffset = Vec3.ZERO;
         public float itemScale = 1.0f;
+        /** More item models (the swords of the reality marble); reused from frame to frame. */
+        public final List<Placement> extra = new java.util.ArrayList<>();
+        public int extraCount;
+    }
+
+    public static final class Placement {
+        public final ItemStackRenderState item = new ItemStackRenderState();
+        public final Quaternionf rotation = new Quaternionf();
+        public Vec3 offset = Vec3.ZERO;
+        public float scale = 1.0f;
     }
 
     private final ItemModelResolver items;
@@ -52,6 +62,7 @@ public abstract class FxEntityRenderer<T extends Entity> extends EntityRenderer<
         Vec3 camera = Minecraft.getInstance().gameRenderer.mainCamera().position();
         Vec3 pos = entity.getPosition(partial);
         state.hasItem = false;
+        state.extraCount = 0;
         build(entity, state, partial, new PoseStack(), buffers, camera.subtract(pos));
         state.geometry = buffers.snapshot();
     }
@@ -67,6 +78,17 @@ public abstract class FxEntityRenderer<T extends Entity> extends EntityRenderer<
         state.itemScale = scale;
     }
 
+    /** One more item model at {@code offset} (entity-local), turned by {@code rotation}. */
+    protected void addItem(T entity, State state, ItemStack stack, Quaternionf rotation, Vec3 offset, float scale) {
+        if (stack.isEmpty()) return;
+        if (state.extraCount >= state.extra.size()) state.extra.add(new Placement());
+        Placement p = state.extra.get(state.extraCount++);
+        this.items.updateForNonLiving(p.item, stack, ItemDisplayContext.FIXED, entity);
+        p.rotation.set(rotation);
+        p.offset = offset;
+        p.scale = scale;
+    }
+
     @Override
     public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera) {
         super.submit(state, pose, collector, camera);
@@ -77,6 +99,15 @@ public abstract class FxEntityRenderer<T extends Entity> extends EntityRenderer<
             pose.rotate(state.itemRotation);
             pose.scale(state.itemScale, state.itemScale, state.itemScale);
             state.item.submit(pose, collector, FxDraw.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, state.outlineColor);
+            pose.popPose();
+        }
+        for (int i = 0; i < state.extraCount; ++i) {
+            Placement p = state.extra.get(i);
+            pose.pushPose();
+            pose.translate(p.offset.x, p.offset.y, p.offset.z);
+            pose.rotate(p.rotation);
+            pose.scale(p.scale, p.scale, p.scale);
+            p.item.submit(pose, collector, FxDraw.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, state.outlineColor);
             pose.popPose();
         }
     }

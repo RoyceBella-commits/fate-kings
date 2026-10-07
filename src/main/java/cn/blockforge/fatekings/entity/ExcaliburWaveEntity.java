@@ -27,8 +27,33 @@ import net.minecraft.world.phys.Vec3;
  * motes at its end.
  */
 public class ExcaliburWaveEntity extends BeamEntity {
+    /** A projected replica's beam: weaker, paler, and Infinity stops it. */
+    private static final net.minecraft.network.syncher.EntityDataAccessor<Boolean> REPLICA =
+        net.minecraft.network.syncher.SynchedEntityData.defineId(ExcaliburWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.BOOLEAN);
+
     public ExcaliburWaveEntity(EntityType<? extends ExcaliburWaveEntity> type, Level level) {
         super(type, level);
+    }
+
+    @Override
+    protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(REPLICA, false);
+    }
+
+    public boolean replica() {
+        return this.entityData.get(REPLICA);
+    }
+
+    /** EMIYA's projected Excalibur: half the width, half the reach, a fraction of the power. */
+    public static ExcaliburWaveEntity fireReplica(ServerLevel level, LivingEntity owner, Vec3 origin, Vec3 dir, float width, double range) {
+        ExcaliburWaveEntity e = new ExcaliburWaveEntity(FateEntities.EXCALIBUR_WAVE, level);
+        e.setup(owner, origin, dir, width, range);
+        e.entityData.set(REPLICA, true);
+        level.addFreshEntity(e);
+        level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.TRIDENT_THUNDER.value(), SoundSource.PLAYERS, 2.0f, 1.5f);
+        level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 2.0f, 0.8f);
+        return e;
     }
 
     public static ExcaliburWaveEntity fire(ServerLevel level, LivingEntity owner, Vec3 origin, Vec3 dir, float width, double range) {
@@ -42,7 +67,7 @@ public class ExcaliburWaveEntity extends BeamEntity {
 
     @Override
     public Weapon weapon() {
-        return Weapon.EXCALIBUR;
+        return replica() ? Weapon.EXCALIBUR_REPLICA : Weapon.EXCALIBUR;
     }
 
     @Override
@@ -60,7 +85,7 @@ public class ExcaliburWaveEntity extends BeamEntity {
         for (Entity e : inBand(level, from, to, width)) {
             if (e == owner || !(e instanceof LivingEntity living) || !this.judged.add(e.getId())) continue;
             float m = Sides.side(living) == Side.HERO ? this.multiplierOnHero : 1.0f;
-            Judgement.strike(level, owner, this, living, Weapon.EXCALIBUR, m);
+            Judgement.strike(level, owner, this, living, weapon(), m);
         }
         Vec3 seg = to.subtract(from);
         double len = seg.length();
@@ -83,7 +108,7 @@ public class ExcaliburWaveEntity extends BeamEntity {
         Vec3 side = new Vec3(-d.z, 0.0, d.x);
         if (side.lengthSqr() < 1.0E-4) return; // straight up or down: no trench
         side = side.normalize();
-        double half = width * 0.35;
+        double half = width * (replica() ? 0.18 : 0.35);
         for (double t = 0; t < len; t += 1.0) {
             Vec3 c = from.add(d.scale(t));
             for (double o = -half; o <= half; o += 1.0) {

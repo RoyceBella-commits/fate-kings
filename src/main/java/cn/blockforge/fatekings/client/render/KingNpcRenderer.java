@@ -46,6 +46,12 @@ public class KingNpcRenderer<T extends KingNpcEntity> extends HumanoidMobRendere
         super.extractRenderState(entity, state, partial);
         state.pose = KingPoses.of(entity);
         state.entityId = entity.getId();
+        // EMIYA draws the black bow (and holds the draw a moment after each shot).
+        boolean bow = entity.getMainHandItem().is(cn.blockforge.fatekings.registry.FateItems.BLACK_BOW);
+        if (bow && (entity.isUsingItem() || cn.blockforge.fatekings.client.ClientSwings.bowShot(entity.getId()))) {
+            if (state.mainArm == net.minecraft.world.entity.HumanoidArm.RIGHT) state.rightArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.BOW_AND_ARROW;
+            else state.leftArmPose = net.minecraft.client.model.HumanoidModel.ArmPose.BOW_AND_ARROW;
+        }
     }
 
     @Override
