@@ -6,6 +6,7 @@ import cn.blockforge.fatekings.combat.JudgementRules.Side;
 import cn.blockforge.fatekings.combat.JudgementRules.Weapon;
 import cn.blockforge.fatekings.combat.Sides;
 import cn.blockforge.fatekings.combat.Terrain;
+import cn.blockforge.fatekings.king.KingRules;
 import cn.blockforge.fatekings.registry.FateEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -23,8 +24,9 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Excalibur, Sword of Promised Victory: a golden slash of light that cuts everything in the region it
- * sweeps (160 blocks, 5-9 wide), leaves a glowing trench that slowly cools, and bursts into falling
- * motes at its end.
+ * sweeps (160 blocks, 5-9 wide) and bursts into falling motes at its end. With terrain effects on it
+ * cuts a deep trench along its path (hills in the way are cut through), lined with glowing ground
+ * that slowly cools, and blasts a crater where it ends.
  */
 public class ExcaliburWaveEntity extends BeamEntity {
     /** A projected replica's beam: weaker, paler, and Infinity stops it. */
@@ -95,7 +97,32 @@ public class ExcaliburWaveEntity extends BeamEntity {
             Fx.particles(level, Fx.dust(0xFFE38A, 2.2f), p.x, p.y, p.z, 3, width * 0.2, width * 0.2, width * 0.2, 0.0);
             Fx.particles(level, ParticleTypes.END_ROD, p.x, p.y, p.z, 1, width * 0.2, width * 0.2, width * 0.2, 0.05);
         }
+        if (Terrain.enabled()) cut(level, from, to, width);
         scorch(level, from, to, width);
+    }
+
+    /**
+     * The trench of one stretch of the slash: every block whose centre lies within an upright ellipse
+     * round the path ({@link KingRules#inExcaliburCut}) and alongside it (not behind its start).
+     */
+    public static void cut(ServerLevel level, Vec3 from, Vec3 to, float width) {
+        Vec3 seg = to.subtract(from);
+        double len = seg.length();
+        if (len < 1.0E-3) return;
+        Vec3 d = seg.scale(1.0 / len);
+        Vec3 side = new Vec3(-d.z, 0.0, d.x);
+        side = side.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : side.normalize();
+        Vec3 up = side.cross(d).normalize();
+        if (up.y < 0.0) up = up.scale(-1.0);
+        double r = Math.max(KingRules.excaliburCutHalfWidth(width), KingRules.excaliburCutHalfHeight(width));
+        BlockPos min = BlockPos.containing(Math.min(from.x, to.x) - r, Math.min(from.y, to.y) - r, Math.min(from.z, to.z) - r);
+        BlockPos max = BlockPos.containing(Math.max(from.x, to.x) + r, Math.max(from.y, to.y) + r, Math.max(from.z, to.z) + r);
+        for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
+            Vec3 off = Vec3.atCenterOf(pos).subtract(from);
+            double t = off.dot(d);
+            if (t < 0.0 || t > len) continue;
+            if (KingRules.inExcaliburCut(off.dot(side), off.dot(up), width)) Terrain.carve(level, pos);
+        }
     }
 
     /** The glowing trench: surface blocks under the path turn to magma and cool to blackstone, plants burn. */
@@ -112,7 +139,8 @@ public class ExcaliburWaveEntity extends BeamEntity {
         for (double t = 0; t < len; t += 1.0) {
             Vec3 c = from.add(d.scale(t));
             for (double o = -half; o <= half; o += 1.0) {
-                Vec3 q = c.add(side.scale(o));
+                // With the trench cut, its floor is what glows.
+                Vec3 q = c.add(side.scale(o)).subtract(0.0, terrain ? KingRules.excaliburCutDepth(o, width) : 0.0, 0.0);
                 BlockPos pos = BlockPos.containing(q);
                 for (int dy = 0; dy < 10; ++dy) {
                     BlockPos p = pos.below(dy);
@@ -138,6 +166,11 @@ public class ExcaliburWaveEntity extends BeamEntity {
 
     @Override
     protected void onEnd(ServerLevel level, LivingEntity owner, Vec3 at) {
+        if (Terrain.enabled() && level.isLoaded(BlockPos.containing(at))) {
+            // The crater where the light comes down.
+            Terrain.blast(level, owner, at, KingRules.excaliburBlast(width(), replica()));
+            Fx.particles(level, ParticleTypes.EXPLOSION_EMITTER, at.x, at.y, at.z, 3, 1.5, 1.5, 1.5, 0.0);
+        }
         Fx.particles(level, ParticleTypes.FLAME, at.x, at.y, at.z, 120, 3.0, 3.0, 3.0, 0.2);
         Fx.particles(level, ParticleTypes.END_ROD, at.x, at.y, at.z, 160, 5.0, 5.0, 5.0, 0.15);
         Fx.particles(level, Fx.dust(0xFFF7DA, 3.0f), at.x, at.y, at.z, 80, 4.0, 4.0, 4.0, 0.0);

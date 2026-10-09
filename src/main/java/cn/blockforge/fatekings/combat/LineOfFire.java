@@ -13,7 +13,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** What a guardian spirit checks before a noble phantasm: no villager, golem, pet or home in the path. */
+/** What a guardian spirit checks before a noble phantasm: no villager, golem, pet or home in the path (or under it). */
 public final class LineOfFire {
     private LineOfFire() {
     }
@@ -28,11 +28,14 @@ public final class LineOfFire {
             double t = c.subtract(origin).dot(dir);
             if (t > 0 && c.distanceTo(origin.add(dir.scale(t))) < halfWidth) return false;
         }
+        // With terrain effects on, Excalibur's trench reaches 4 blocks aside and 6 below the path.
+        boolean terrain = Terrain.enabled();
+        int aside = terrain ? 4 : 2, below = terrain ? 6 : 2;
         for (double t = 4.0; t < range; t += 2.0) {
             Vec3 p = origin.add(dir.scale(t));
             BlockPos pos = BlockPos.containing(p);
             if (!level.isLoaded(pos)) break;
-            for (BlockPos q : BlockPos.betweenClosed(pos.offset(-2, -2, -2), pos.offset(2, 2, 2))) {
+            for (BlockPos q : BlockPos.betweenClosed(pos.offset(-aside, -below, -aside), pos.offset(aside, 2, aside))) {
                 BlockState s = level.getBlockState(q);
                 if (s.getBlock() instanceof BedBlock || s.getBlock() instanceof ChestBlock || s.getBlock() instanceof CraftingTableBlock) return false;
             }

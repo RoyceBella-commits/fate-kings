@@ -45,7 +45,8 @@ public final class KnightLeap {
 
     /** From the client: jump was pressed with these movement inputs. */
     public static void handle(ServerPlayer p, float forward, float strafe, boolean clientOnGround) {
-        if (!Kings.isKnight(p) || !p.isAlive() || p.isSpectator() || p.isPassenger() || p.isFallFlying() || p.getAbilities().flying) return;
+        // The King of Knights' mana burst; the Red Archer leaps the same way.
+        if (!(Kings.isKnight(p) || Kings.isArcher(p)) || !p.isAlive() || p.isSpectator() || p.isPassenger() || p.isFallFlying() || p.getAbilities().flying) return;
         if (KnightPassives.chained(p)) {
             Kings.refuse(p, "fatekings.hint.chained");
             return;

@@ -67,6 +67,14 @@ public final class KingAiRules {
         return tier >= DISPLEASED && strongFoe && bindReady;
     }
 
+    /**
+     * Before a strong foe (worthy, or Saber) he opens each fight with the full display: a held volley
+     * of 100 gates spread wide behind him, let go after 4 s. Once a fight; then his usual rhythm.
+     */
+    public static boolean gilOpensWithVolley(boolean doneThisFight, boolean strongFoe, boolean volleyReady) {
+        return !doneThisFight && strongFoe && volleyReady;
+    }
+
     /** Gates opened per casual shot in each tier (arrogant 1-3, displeased 8-15, serious 30-60). */
     public static int gilGates(int tier, float roll01) {
         return switch (tier) {
@@ -110,6 +118,11 @@ public final class KingAiRules {
     /** Swords (true) or the bow, with a margin so he does not flicker between them. */
     public static boolean emiyaSwords(double dist, boolean holdingSwords) {
         return holdingSwords ? dist < EMIYA_BOW_OUT : dist < EMIYA_SWORD_IN;
+    }
+
+    /** The triple shot: whenever ready with two or more foes ahead, now and then (1 in 4) against one. */
+    public static boolean emiyaWantsTriple(boolean ready, int foesAhead, float roll01) {
+        return ready && (foesAhead >= 2 || roll01 < 0.25f);
     }
 
     /** Rho Aias against a wall of gates aimed at him, a flight of arrows, or a beam coming. */

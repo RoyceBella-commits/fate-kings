@@ -28,6 +28,18 @@ public final class ArcherRules {
     public static final double ARROW_START_RANGE = 48.0;
     /** The arrow aims a little ahead of a moving foe, never by more than this. */
     public static final double ARROW_LEAD_MAX = 3.0;
+    /** Sneak + attack: three arrows in a fan, 8 degrees apart (its own cooldown, not the tap's). */
+    public static final int BOW_TRIPLE = 20;
+    public static final int BOW_TRIPLE_UBW = 10;
+    public static final double TRIPLE_SPREAD_DEG = 8.0;
+    public static final int TRIPLE_ARROWS = 3;
+
+    // ---- Regeneration (the Red Shroud's slow mending) ----
+    /** Out of combat (5 s unhurt): 1 heart a second. In combat: 1 heart every 4 s. */
+    public static final int REGEN_IDLE_AFTER = 100;
+    public static final float REGEN_HP = 2.0f;
+    public static final int REGEN_IDLE_INTERVAL = 20;
+    public static final int REGEN_COMBAT_INTERVAL = 80;
 
     // ---- Caladbolg II ----
     public static final int CALADBOLG_CHARGE = 30;
@@ -75,15 +87,17 @@ public final class ArcherRules {
     public static final int UBW_UNFOLD = 40;
     public static final int UBW_TIME = 600;
     public static final int UBW_CLOSE = 20;
-    public static final int UBW = 3600;
-    public static final int UBW_NPC = 4800;
-    public static final double UBW_RADIUS = 34.0;
+    /** 60 s, player and NPC alike: the same as a domain in the Gojo x Sukuna mod. */
+    public static final int UBW = 1200;
+    public static final int UBW_NPC = 1200;
+    /** 64 blocks, as a domain of the Gojo x Sukuna mod (since its 2.2.6). */
+    public static final double UBW_RADIUS = 64.0;
     public static final int UBW_VOLLEY_INTERVAL = 20;
     public static final float UBW_SWORD_DAMAGE = 14.0f;
     public static final int UBW_MAX_SWORDS_PER_VOLLEY = 24;
     public static final int UBW_MAX_TARGETS = 12;
-    public static final float UBW_INTERCEPT_CHANCE = 0.5f;
-    public static final int UBW_MAX_INTERCEPTORS = 40;
+    /** Every treasure inside is met by a blade (at most this many in the air at once; past that it shatters unseen). */
+    public static final int UBW_MAX_INTERCEPTORS = 120;
     /** JJK's domain clash: each side keeps at most 20 s, the one that opened first 2 s more. */
     public static final int CLASH_TICKS = 400;
     public static final int CLASH_FIRST_BONUS = 40;
@@ -102,6 +116,62 @@ public final class ArcherRules {
     /** The bow's tap cooldown: twice as fast inside his own reality marble. */
     public static int bowTapCooldown(boolean insideUbw) {
         return insideUbw ? BOW_TAP_UBW : BOW_TAP;
+    }
+
+    public static int bowTripleCooldown(boolean insideUbw) {
+        return insideUbw ? BOW_TRIPLE_UBW : BOW_TRIPLE;
+    }
+
+    /** Yaw of arrow {@code i} of the fan (0 left, 1 centre, 2 right) from the aim, in degrees (positive to the left). */
+    public static double tripleYaw(int i) {
+        return (1 - i) * TRIPLE_SPREAD_DEG;
+    }
+
+    /**
+     * Which foe each arrow of the fan hunts. {@code dots[i][j]}: how well arrow i's direction points
+     * at foe j (cosine); foe 0 is the one aimed at, if any ({@code aimed}). The centre arrow takes the
+     * aimed foe (else the one best in line with it); then the side arrows take the other foes, the
+     * best-placed pair first; an arrow left without a foe follows the centre's. -1: no foe at all
+     * (the arrow flies straight).
+     */
+    public static int[] tripleTargets(double[][] dots, boolean aimed) {
+        int arrows = dots.length;
+        int[] pick = new int[arrows];
+        java.util.Arrays.fill(pick, -1);
+        int foes = arrows == 0 ? 0 : dots[0].length;
+        if (foes == 0) return pick;
+        boolean[] taken = new boolean[foes];
+        int centre = arrows / 2;
+        if (aimed) {
+            pick[centre] = 0;
+        } else {
+            pick[centre] = 0;
+            for (int j = 1; j < foes; ++j) if (dots[centre][j] > dots[centre][pick[centre]]) pick[centre] = j;
+        }
+        taken[pick[centre]] = true;
+        while (true) {
+            int bi = -1, bj = -1;
+            for (int i = 0; i < arrows; ++i) {
+                if (pick[i] >= 0) continue;
+                for (int j = 0; j < foes; ++j) {
+                    if (!taken[j] && (bi < 0 || dots[i][j] > dots[bi][bj])) {
+                        bi = i;
+                        bj = j;
+                    }
+                }
+            }
+            if (bi < 0) break;
+            pick[bi] = bj;
+            taken[bj] = true;
+        }
+        for (int i = 0; i < arrows; ++i) if (pick[i] < 0) pick[i] = pick[centre];
+        return pick;
+    }
+
+    /** Health mended this tick ({@code now}: game time) by the Red Shroud, before the NPC scale. */
+    public static float regen(long now, long ticksSinceHurt) {
+        int interval = ticksSinceHurt >= REGEN_IDLE_AFTER ? REGEN_IDLE_INTERVAL : REGEN_COMBAT_INTERVAL;
+        return now % interval == 0 ? REGEN_HP : 0.0f;
     }
 
     public static int caladbolgCooldown(boolean npc) {

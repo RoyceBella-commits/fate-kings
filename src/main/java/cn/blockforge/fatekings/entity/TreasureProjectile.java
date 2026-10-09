@@ -117,6 +117,12 @@ public class TreasureProjectile extends AbstractArrow {
     protected void onHitEntity(EntityHitResult result) {
         Entity target = result.getEntity();
         if (!(this.level() instanceof ServerLevel level) || !this.hit.add(target.getId())) return;
+        if (UbwEntity.shields(this)) {
+            // Unlimited Blade Works: a projected blade was there first.
+            UbwEntity.parried(level, result.getLocation());
+            this.discard();
+            return;
+        }
         Entity owner = this.getOwner();
         DamageSource source = this.damageSources().arrow(this, owner == null ? this : owner);
         float damage = KingRules.GOB_DAMAGE_MIN + this.random.nextFloat() * (KingRules.GOB_DAMAGE_MAX - KingRules.GOB_DAMAGE_MIN);

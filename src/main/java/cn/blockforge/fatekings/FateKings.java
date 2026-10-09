@@ -62,6 +62,7 @@ public final class FateKings implements ModInitializer {
         FateNet.receive(FateNet.C2S_LEAP, (server, player, buf) -> KnightLeap.handle(player, buf.readFloat(), buf.readFloat(), buf.readBoolean()));
         FateNet.receive(FateNet.C2S_SLASH, (server, player, buf) -> cn.blockforge.fatekings.knight.Slashes.handle(player, buf.readFloat(), buf.readByte()));
         FateNet.receive(FateNet.C2S_TWIN, (server, player, buf) -> cn.blockforge.fatekings.archer.TwinBlades.handle(player, buf.readByte()));
+        FateNet.receive(FateNet.C2S_TRIPLE, (server, player, buf) -> cn.blockforge.fatekings.archer.ArcherBow.triple(player));
         FateNet.receive(FateNet.C2S_PROJECT, (server, player, buf) -> cn.blockforge.fatekings.archer.UnlimitedBladeWorks.fromScreen(player, buf.readVarInt(), buf.readByte()));
         cn.blockforge.fatekings.archer.ProjectionGuards.register();
         DamageHooks.register();

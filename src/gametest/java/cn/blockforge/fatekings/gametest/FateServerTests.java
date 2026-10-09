@@ -376,7 +376,9 @@ public class FateServerTests {
         h.assertTrue(gates.size() == KingRules.volleyGates(30), "the volley grows (" + gates.size() + ")");
         int onAhead = 0, onAside = 0;
         for (GatePortalEntity g : gates) {
-            h.assertTrue(g.getX() < eye.x - 1.0 && Math.abs(g.getZ() - eye.z) < 4.0, "gates open behind where he stood when he pressed");
+            // (A held volley's gates spread some 15 blocks aside, so only "behind" tells where he stood.)
+            h.assertTrue(g.getX() < eye.x - 1.0 && Math.abs(g.getZ() - eye.z) < 17.0,
+                "gates open behind where he stood when he pressed");
             if (same(g.aimPoint(), ca)) ++onAhead;
             else if (same(g.aimPoint(), cb)) ++onAside;
             else h.fail("a gate aimed elsewhere: " + g.aimPoint());
@@ -384,6 +386,36 @@ public class FateServerTests {
         h.assertTrue(onAhead > 0 && onAside > 0 && Math.abs(onAhead - onAside) <= 1, "the two foes share the volley (" + onAhead + " / " + onAside + ")");
         GateOfBabylon.cancelVolley(p);
         h.assertTrue(GateOfBabylon.pressed(p) == null, "nothing left over");
+        h.succeed();
+    }
+
+    @GameTest
+    public void aHeldVolleyLocksOnToScatteredFoesAsItFires(GameTestHelper h) {
+        ServerPlayer p = h.makeMockServerPlayerInLevel();
+        Kings.of(p).king = KingRules.HERO;
+        turn(p, h.absoluteVec(new Vec3(1.5, 2.0, 1.5)), -90.0f, 0.0f); // facing +x
+        LivingEntity ahead = still(h.spawn(EntityTypes.ZOMBIE, 6.5f, 2.0f, 1.5f));
+        Vec3 pressedAt = ahead.getBoundingBox().getCenter();
+        GateOfBabylon.press(p);
+        GateOfBabylon.growVolley(p, KingRules.GOB_VOLLEY_FULL);
+        List<GatePortalEntity> gates = GateOfBabylon.volley(p);
+        // While the gates opened the foe moved and another came, well off to the side (55 degrees).
+        Vec3 moved = h.absoluteVec(new Vec3(6.5, 2.0, 3.5));
+        ahead.teleportTo(moved.x, moved.y, moved.z);
+        ahead.xo = ahead.getX();
+        ahead.zo = ahead.getZ();
+        LivingEntity aside = still(h.spawn(EntityTypes.ZOMBIE, 4.5f, 2.0f, 5.8f));
+        GateOfBabylon.releaseVolley(p);
+        Vec3 ca = ahead.getBoundingBox().getCenter(), cb = aside.getBoundingBox().getCenter();
+        int onA = 0, onB = 0, old = 0;
+        for (GatePortalEntity g : gates) {
+            if (same(g.aimPoint(), ca)) ++onA;
+            else if (same(g.aimPoint(), cb)) ++onB;
+            else if (same(g.aimPoint(), pressedAt)) ++old;
+        }
+        gates.forEach(GatePortalEntity::discard);
+        h.assertTrue(onA > 0 && onB > 0, "the gates fire at both foes where they stand now (" + onA + " / " + onB + ")");
+        h.assertTrue(old == 0, "none at where the first one stood when he pressed (" + old + ")");
         h.succeed();
     }
 

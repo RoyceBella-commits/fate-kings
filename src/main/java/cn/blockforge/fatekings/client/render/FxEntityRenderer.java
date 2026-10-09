@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 /**
  * Effect entity renderer: geometry is recorded during extraction (in entity-local coordinates) and
@@ -69,6 +70,13 @@ public abstract class FxEntityRenderer<T extends Entity> extends EntityRenderer<
 
     /** Records geometry relative to the entity; {@code toCamera} is the camera position relative to it. */
     protected abstract void build(T entity, State state, float partial, PoseStack pose, PortBuffers buffers, Vec3 toCamera);
+
+    /**
+     * Where a sword's tip points once its item model is drawn here (FIXED context): the sprite runs
+     * from the hilt at the bottom left to the tip at the top right, and that context turns the model
+     * half round (Y 180), so the tip ends up towards -x, +y. Rotations that aim a blade start from this.
+     */
+    public static final Vector3f BLADE = new Vector3f(-1.0f, 1.0f, 0.0f).normalize();
 
     protected void setItem(T entity, State state, ItemStack stack, Quaternionf rotation, Vec3 offset, float scale) {
         this.items.updateForNonLiving(state.item, stack, ItemDisplayContext.FIXED, entity);

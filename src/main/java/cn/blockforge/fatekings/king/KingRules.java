@@ -89,7 +89,9 @@ public final class KingRules {
 
     // ---- Gate of Babylon, Instinct, sword qi, leap ----
     /** At most this many foes share one cast of the Gate of Babylon (the one aimed at first). */
-    public static final int GOB_MAX_TARGETS = 6;
+    public static final int GOB_MAX_TARGETS = 10;
+    /** A held volley re-aims as it is let go: at foes within 65 degrees of where he looked when he pressed. */
+    public static final double GOB_RELEASE_CONE_COS = 0.423;
     /** A player's treasures pick foes within 40 degrees of where he looked when he pressed. */
     public static final double GOB_CONE_COS = 0.766;
     /** An NPC leads a moving foe once, when it casts, by at most this far. */
@@ -188,6 +190,65 @@ public final class KingRules {
         if (heldTicks < GOB_VOLLEY_MIN) return 0;
         float t = Math.min(1.0f, (heldTicks - GOB_VOLLEY_MIN) / (float)(GOB_VOLLEY_FULL - GOB_VOLLEY_MIN));
         return Math.round(GOB_VOLLEY_MIN_GATES + (GOB_VOLLEY_MAX_GATES - GOB_VOLLEY_MIN_GATES) * t);
+    }
+
+    /** Spacing of the gates' spiral (Vogel's sunflower): no two closer than some 1.7 blocks. */
+    public static final double GATE_FAN = 1.2;
+    private static final double GOLDEN_ANGLE = Math.PI * (3.0 - Math.sqrt(5.0));
+
+    /**
+     * Where gate {@code index} of a cast opens, in the frame of the cast: {side, up, back} from the
+     * king's eyes. The gates follow a sunflower spiral over the upper half of a fan behind him (100
+     * spread some 31 blocks across and 15 high), each a little further back than its neighbours: many
+     * gates hanging apart in the air, never one wall. {@code phase} turns the spiral (one per cast).
+     */
+    public static double[] gateSpot(int index, double phase) {
+        int kept = -1;
+        for (int k = 0; ; ++k) {
+            double r = GATE_FAN * Math.sqrt(k + 0.5);
+            double a = k * GOLDEN_ANGLE + phase;
+            double y = Math.sin(a) * r;
+            if (y < -0.3 * GATE_FAN) continue;
+            if (++kept < index) continue;
+            double back = 1.2 + 0.12 * r + 1.4 * ((index * 0.6180339887) % 1.0);
+            return new double[]{Math.cos(a) * r, y * 0.9 + 0.6, back};
+        }
+    }
+
+    /** A gate's size (0.75 .. 0.9): at most 1.62 across, so the spiral's gates never overlap. */
+    public static float gateSize(double roll01) {
+        return 0.75f + 0.15f * (float)Math.max(0.0, Math.min(1.0, roll01));
+    }
+
+    // ---- Excalibur's trench (terrain switch on) ----
+
+    /** Half the width of the trench the slash cuts: 0.4 of the beam's width (2 .. 3.6 blocks). */
+    public static double excaliburCutHalfWidth(float width) {
+        return width * 0.4;
+    }
+
+    /** Half its height, about the line of the slash: 1.6 times the half width (3.2 .. 5.8 blocks). */
+    public static double excaliburCutHalfHeight(float width) {
+        return excaliburCutHalfWidth(width) * 1.6;
+    }
+
+    /** Whether a point {@code lateral} to the side of and {@code vertical} above the slash's line is cut away. */
+    public static boolean inExcaliburCut(double lateral, double vertical, float width) {
+        double a = lateral / excaliburCutHalfWidth(width);
+        double b = vertical / excaliburCutHalfHeight(width);
+        return a * a + b * b <= 1.0;
+    }
+
+    /** How far below the slash's line the trench reaches at {@code lateral} to the side (0 outside it). */
+    public static double excaliburCutDepth(double lateral, float width) {
+        double a = lateral / excaliburCutHalfWidth(width);
+        return a * a >= 1.0 ? 0.0 : excaliburCutHalfHeight(width) * Math.sqrt(1.0 - a * a);
+    }
+
+    /** The crater at the end of the slash (explosion power): 6 .. 8 with the width; a replica's 4. */
+    public static float excaliburBlast(float width, boolean replica) {
+        if (replica) return 4.0f;
+        return 6.0f + 2.0f * Math.max(0.0f, Math.min(1.0f, (width - 5.0f) / 4.0f));
     }
 
     /** Enuma Elish width grows with the charge beyond the 3 s minimum (4 .. 10 blocks). */

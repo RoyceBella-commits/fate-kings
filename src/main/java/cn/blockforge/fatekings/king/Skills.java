@@ -18,6 +18,7 @@ public final class Skills {
     public static final String AVALON_LETHAL = "avalon_lethal";
     public static final String AVALON_DOME = "avalon_dome";
     public static final String BOW_TAP = "bow_tap";
+    public static final String BOW_TRIPLE = "bow_triple";
     public static final String CALADBOLG = "caladbolg";
     public static final String RHO_AIAS = "rho_aias";
     public static final String TWIN_THROW = "twin_throw";
@@ -29,7 +30,7 @@ public final class Skills {
     /** Order of the HUD rows per king. */
     public static final String[] HERO_HUD = {GOB_VOLLEY, GOB_RING, BAB_ILU, ENKIDU_BIND, VIMANA, AUTODEFENDER, ELIXIR};
     public static final String[] KNIGHT_HUD = {STRIKE_AIR, MANA_BURST, EXCALIBUR, AVALON_LETHAL, AVALON_DOME, WARHORSE};
-    public static final String[] ARCHER_HUD = {CALADBOLG, RHO_AIAS, TWIN_THROW, CRANE_WING, EXCALIBUR_REPLICA, UBW};
+    public static final String[] ARCHER_HUD = {BOW_TRIPLE, CALADBOLG, RHO_AIAS, TWIN_THROW, CRANE_WING, EXCALIBUR_REPLICA, UBW};
 
     /** The HUD rows of a spirit. */
     public static String[] hud(int king) {

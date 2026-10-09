@@ -53,7 +53,7 @@ public final class GateOfBabylon {
      * One cast, aimed once: the king's eye and facing at that moment (the gates open behind that
      * pose) and the spots the treasures fly at, the foe aimed at first.
      */
-    public record Salvo(Vec3 eye, Vec3 forward, Vec3 side, List<Vec3> marks) {
+    public record Salvo(Vec3 eye, Vec3 forward, Vec3 side, Vec3 look, double phase, List<Vec3> marks) {
         public Vec3 mark(int gate) {
             return this.marks.get(KingRules.gateMark(gate, this.marks.size()));
         }
@@ -137,7 +137,7 @@ public final class GateOfBabylon {
         List<Vec3> marks = new ArrayList<>();
         for (LivingEntity foe : foes(caster, first, eye, look, range)) marks.add(mark(caster, foe));
         if (marks.isEmpty()) marks.add(aim.point());
-        return new Salvo(eye, forward, side, List.copyOf(marks));
+        return new Salvo(eye, forward, side, look, caster.getRandom().nextDouble() * Math.PI * 2.0, List.copyOf(marks));
     }
 
     private static List<LivingEntity> foes(LivingEntity caster, LivingEntity first, Vec3 eye, Vec3 look, double range) {
@@ -158,6 +158,31 @@ public final class GateOfBabylon {
         return foes;
     }
 
+    /**
+     * A held volley as it is let go: the foe in the crosshair now, then the others within 65 degrees
+     * of where he looked when he pressed (in sight, within 64 blocks), the nearest first, up to
+     * {@link KingRules#GOB_MAX_TARGETS}. No foe at all: the spots aimed at the press stay.
+     */
+    private static Salvo spreadAtRelease(LivingEntity caster, Salvo s) {
+        LivingEntity first = Aim.of(caster, 96.0).entity();
+        List<LivingEntity> foes = new ArrayList<>();
+        if (first != null && first.isAlive()) foes.add(first);
+        double reach = 64.0;
+        List<LivingEntity> more = caster.level().getEntitiesOfClass(LivingEntity.class, new net.minecraft.world.phys.AABB(s.eye(), s.eye()).inflate(reach),
+            e -> e != first && hostileTo(caster, e) && e.distanceToSqr(s.eye()) <= reach * reach
+                && s.look().dot(e.getBoundingBox().getCenter().subtract(s.eye()).normalize()) >= KingRules.GOB_RELEASE_CONE_COS
+                && caster.hasLineOfSight(e));
+        more.sort(Comparator.comparingDouble(e -> e.distanceToSqr(s.eye())));
+        for (LivingEntity e : more) {
+            if (foes.size() >= KingRules.GOB_MAX_TARGETS) break;
+            foes.add(e);
+        }
+        if (foes.isEmpty()) return s;
+        List<Vec3> marks = new ArrayList<>();
+        for (LivingEntity foe : foes) marks.add(mark(caster, foe));
+        return new Salvo(s.eye(), s.forward(), s.side(), s.look(), s.phase(), List.copyOf(marks));
+    }
+
     /** NPC: whatever it would fight. Player: monsters and whatever is after him, never players or his own pets. */
     private static boolean hostileTo(LivingEntity caster, LivingEntity e) {
         if (caster instanceof KingNpcEntity npc) return e != caster && e.isAlive() && !e.isSpectator() && npc.canHarm(e);
@@ -173,25 +198,17 @@ public final class GateOfBabylon {
         return new Vec3(p[0], p[1], p[2]);
     }
 
-    /**
-     * A point on the wall of gates behind the pose a cast was aimed from. Ring k (from 0) holds 6 + 6k
-     * gates, so even 100 gates spread only some 6 blocks round the king; rings alternate a little in depth.
-     */
-    private static Vec3 wallSpot(Salvo s, int index, RandomSource random) {
-        int ring = 0;
-        int left = index;
-        while (left >= 6 + 6 * ring) {
-            left -= 6 + 6 * ring;
-            ++ring;
-        }
-        int inRing = 6 + 6 * ring;
-        double angle = left / (double)inRing * Math.PI * 2.0 + ring * 0.37 + random.nextDouble() * 0.12;
-        double radius = 1.5 + ring * 0.85 + random.nextDouble() * 0.25;
-        double x = Math.cos(angle) * radius;
-        // Mostly above the shoulders: the lower half of each ring is folded upwards.
-        double y = Math.abs(Math.sin(angle)) * radius * 0.8 + 0.4;
-        double depth = 1.2 + (ring % 2) * 0.5 + random.nextDouble() * 0.3;
-        return s.eye().add(s.forward().scale(-depth)).add(s.side().scale(x)).add(0.0, y - 0.8, 0.0);
+    /** Gate {@code index} of a cast, behind the pose it was aimed from ({@link KingRules#gateSpot}). */
+    private static Vec3 gateSpot(Salvo s, int index) {
+        double[] local = KingRules.gateSpot(index, s.phase());
+        return s.eye().add(s.side().scale(local[0])).add(0.0, local[1], 0.0).add(s.forward().scale(-local[2]));
+    }
+
+    private static GatePortalEntity openGate(ServerLevel level, LivingEntity caster, Salvo s, int index, boolean single) {
+        GatePortalEntity g = GatePortalEntity.open(level, caster, gateSpot(s, index), s.mark(index), randomTreasure(level.getRandom()),
+            randomEffect(level.getRandom()), single);
+        g.setSize(KingRules.gateSize(level.getRandom().nextDouble()));
+        return g;
     }
 
     // ---- Tap ----
@@ -202,11 +219,7 @@ public final class GateOfBabylon {
         if (!treasuryOpen(caster) || !ready(caster, Skills.GOB_TAP)) return false;
         ServerLevel level = (ServerLevel)caster.level();
         Kings.of(caster).cooldown(Skills.GOB_TAP, level.getGameTime(), KingRules.GOB_TAP);
-        for (int i = 0; i < count; ++i) {
-            Vec3 spot = wallSpot(s, i * 3 + level.getRandom().nextInt(3), level.getRandom());
-            GatePortalEntity.open(level, caster, spot, s.mark(i), randomTreasure(level.getRandom()), randomEffect(level.getRandom()), single)
-                .release(4 + i * 2);
-        }
+        for (int i = 0; i < count; ++i) openGate(level, caster, s, i, single).release(4 + i * 2);
         return true;
     }
 
@@ -224,11 +237,7 @@ public final class GateOfBabylon {
         }
         gates.removeIf(g -> g.isRemoved());
         Salvo s = pressedOrNow(caster, 96.0);
-        while (gates.size() < wanted) {
-            int i = gates.size();
-            gates.add(GatePortalEntity.open(level, caster, wallSpot(s, i, level.getRandom()), s.mark(i), randomTreasure(level.getRandom()),
-                randomEffect(level.getRandom()), false));
-        }
+        while (gates.size() < wanted) gates.add(openGate(level, caster, s, gates.size(), false));
         if (gates.size() >= 15 && held % 20 == 0) {
             Fx.event(level, Fx.SKY_DIM, caster, caster.position(), 40, 0.2f, 96.0);
         }
@@ -245,11 +254,17 @@ public final class GateOfBabylon {
     }
 
     public static void releaseVolley(LivingEntity caster) {
-        PRESSED.remove(caster.getUUID());
+        Salvo pressed = PRESSED.remove(caster.getUUID());
         List<GatePortalEntity> gates = VOLLEYS.remove(caster.getUUID());
         if (gates == null || !(caster.level() instanceof ServerLevel level)) return;
         gates.removeIf(g -> g.isRemoved());
         if (gates.isEmpty()) return;
+        if (pressed != null && !(caster instanceof KingNpcEntity)) {
+            // As they fire, the gates lock on to the foes where they stand now, spread out as they are
+            // (the gates stay where they opened; the treasures fly straight).
+            Salvo now = spreadAtRelease(caster, pressed);
+            for (int i = 0; i < gates.size(); ++i) gates.get(i).retarget(now.mark(i));
+        }
         for (int i = 0; i < gates.size(); ++i) gates.get(i).release(4 + i % 8);
         Kings.of(caster).cooldown(Skills.GOB_VOLLEY, level.getGameTime(), KingRules.GOB_VOLLEY);
         if (gates.size() >= 15) {
@@ -257,6 +272,25 @@ public final class GateOfBabylon {
             Fx.event(level, Fx.SKY_DIM, caster, caster.position(), 50, 0.2f, 96.0);
         }
         level.playSound(null, caster.getX(), caster.getY(), caster.getZ(), SoundEvents.BELL_RESONATE, SoundSource.PLAYERS, 1.5f, 1.4f);
+    }
+
+    /** NPC: begins a held volley aimed at its foe (the opening display before a strong foe). */
+    public static void npcVolleyStart(LivingEntity caster, LivingEntity target) {
+        cancelVolley(caster);
+        PRESSED.put(caster.getUUID(), aim(caster, target, 96.0));
+    }
+
+    /**
+     * NPC: lets its held volley go. After four seconds of opening gates the foe has moved, so each
+     * gate turns on where its foe is now (leading a moving foe once, as an NPC always does).
+     */
+    public static void npcReleaseVolley(LivingEntity caster, LivingEntity target) {
+        List<GatePortalEntity> gates = VOLLEYS.get(caster.getUUID());
+        if (gates != null && target != null && target.isAlive()) {
+            Salvo now = aim(caster, target, 96.0);
+            for (int i = 0; i < gates.size(); ++i) gates.get(i).retarget(now.mark(i));
+        }
+        releaseVolley(caster);
     }
 
     public static void cancelVolley(LivingEntity caster) {
@@ -297,10 +331,7 @@ public final class GateOfBabylon {
     public static void npcShots(LivingEntity caster, LivingEntity target, int gates) {
         if (!(caster.level() instanceof ServerLevel level) || Kings.of(caster).reorganizing(level.getGameTime())) return;
         Salvo s = aim(caster, target, 32.0);
-        for (int i = 0; i < gates; ++i) {
-            GatePortalEntity.open(level, caster, wallSpot(s, i, level.getRandom()), s.mark(i), randomTreasure(level.getRandom()),
-                randomEffect(level.getRandom()), gates <= 3).release(5 + i % 6);
-        }
+        for (int i = 0; i < gates; ++i) openGate(level, caster, s, i, gates <= 3).release(5 + i % 6);
     }
 
     public static int effectNone() {

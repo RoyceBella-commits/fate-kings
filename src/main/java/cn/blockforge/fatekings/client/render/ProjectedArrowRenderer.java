@@ -9,7 +9,6 @@ import org.joml.Vector3f;
 
 /** A projected sword-arrow in flight: blade first, trailing red light. */
 public class ProjectedArrowRenderer extends FxEntityRenderer<ProjectedArrowEntity> {
-    private static final Vector3f BLADE = new Vector3f(1.0f, 1.0f, 0.0f).normalize();
 
     public ProjectedArrowRenderer(EntityRendererProvider.Context context) {
         super(context);

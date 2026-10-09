@@ -44,4 +44,17 @@ public abstract class FirstPersonSwingMixin {
         pose.rotate(Axis.YP, (float)Math.toRadians(side * -45.0f));
         ci.cancel();
     }
+
+    /**
+     * The vanilla swing only moves the hand that swung (the main hand); Bakuya in the other hand
+     * follows the stroke here, once its arm is in place.
+     */
+    @Inject(method = "applyItemArmTransform", at = @At("TAIL"))
+    private void fatekings$offHandStroke(PoseStack pose, HumanoidArm arm, float equip, CallbackInfo ci) {
+        var p = Minecraft.getInstance().player;
+        if (p == null || arm == p.getMainArm() || ClientKingState.king != KingRules.ARCHER || !FateItems.twinSword(p.getMainHandItem())) return;
+        ClientSwings.Twin twin = ClientSwings.twin(p.getId());
+        if (twin == null) return;
+        cn.blockforge.fatekings.client.KingPoses.twinFirstPerson(pose, arm == HumanoidArm.RIGHT ? 1.0f : -1.0f, false, twin.step(), twin.progress());
+    }
 }

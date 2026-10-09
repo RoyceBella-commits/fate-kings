@@ -9,9 +9,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Terrain changes of the noble phantasms, spread over ticks. One switch for everything: this mod's
@@ -26,7 +30,29 @@ public final class Terrain {
     private static final Deque<Op> QUEUE = new ArrayDeque<>();
     private static final PriorityQueue<Later> LATER = new PriorityQueue<>((a, b) -> Long.compare(a.at, b.at));
 
+    /** A noble phantasm's blast only breaks blocks: the judgement has already dealt with the living. */
+    private static final ExplosionDamageCalculator BLOCKS_ONLY = new ExplosionDamageCalculator() {
+        @Override
+        public boolean shouldDamageEntity(Explosion explosion, Entity entity) {
+            return false;
+        }
+
+        @Override
+        public float getKnockbackMultiplier(Entity entity) {
+            return 0.6f;
+        }
+    };
+
     private Terrain() {
+    }
+
+    /**
+     * An explosion of {@code power} at {@code at} that breaks blocks (when terrain effects are on,
+     * and as mob griefing allows) and hurts no one.
+     */
+    public static void blast(ServerLevel level, Entity source, Vec3 at, float power) {
+        level.explode(source, null, BLOCKS_ONLY, at.x, at.y, at.z, power, false,
+            enabled() ? Level.ExplosionInteraction.MOB : Level.ExplosionInteraction.NONE);
     }
 
     public static boolean enabled() {

@@ -12,6 +12,10 @@
     "MobilityMixin",
     "JjkNpcMixin"
   ],
+  "client": [
+    "VoidShellSeamMixin",
+    "ShrineSeamMixin"
+  ],
   "injectors": {
     "defaultRequire": 0
   }

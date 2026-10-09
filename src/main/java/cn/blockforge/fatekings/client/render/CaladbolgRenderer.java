@@ -19,17 +19,23 @@ import org.joml.Vector3f;
  * it, rings of shocked air every few blocks; at the end, the burst of the Broken Phantasm.
  */
 public class CaladbolgRenderer extends FxEntityRenderer<CaladbolgEntity> {
-    private static final Vector3f BLADE = new Vector3f(1.0f, 1.0f, 0.0f).normalize();
-    private static final ItemStack DRILL = drill();
+    /**
+     * Made on first use: renderers are built while resources load, before item components are bound,
+     * and an item stack made then fails ("Components not bound yet").
+     */
+    private static ItemStack drill;
 
     public CaladbolgRenderer(EntityRendererProvider.Context context) {
         super(context);
     }
 
     private static ItemStack drill() {
-        ItemStack s = new ItemStack(Items.ARROW);
-        s.set(DataComponents.ITEM_MODEL, FateKings.id("caladbolg_arrow"));
-        return s;
+        if (drill == null) {
+            ItemStack s = new ItemStack(Items.ARROW);
+            s.set(DataComponents.ITEM_MODEL, FateKings.id("caladbolg_arrow"));
+            drill = s;
+        }
+        return drill;
     }
 
     @Override
@@ -48,7 +54,7 @@ public class CaladbolgRenderer extends FxEntityRenderer<CaladbolgEntity> {
         }
         Quaternionf rot = new Quaternionf().rotationTo(BLADE, new Vector3f((float)dir.x, (float)dir.y, (float)dir.z));
         rot.rotateAxis(t * 0.9f, (float)dir.x, (float)dir.y, (float)dir.z);
-        setItem(e, state, DRILL, rot, end, 2.0f);
+        setItem(e, state, drill(), rot, end, 2.0f);
         Vec3 back = end.subtract(dir.scale(Math.min(front, 24.0)));
         FxDraw.tube(pose, b, back, end, 0.15f, 0.9f, low ? 6 : 10, FxDraw.argb(0, 0xE8302A), FxDraw.argb(200, 0xE8302A), 6.0f + t * 0.3f);
         if (!low) FxDraw.tube(pose, b, back, end, 0.1f, 0.6f, 8, FxDraw.argb(0, 0xFFF0E8), FxDraw.argb(180, 0xFFF0E8), -6.0f - t * 0.3f);

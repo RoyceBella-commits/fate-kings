@@ -26,10 +26,17 @@ public final class Targets {
 
     /** The foe nearest the line from {@code eye} along {@code dir} within the cone ({@code cos}) and range, in sight. */
     public static LivingEntity nearestInCone(LivingEntity caster, Vec3 eye, Vec3 dir, double cos, double range) {
-        List<LivingEntity> found = caster.level().getEntitiesOfClass(LivingEntity.class, caster.getBoundingBox().inflate(range),
+        List<LivingEntity> found = inCone(caster, eye, dir, cos, range);
+        return found.isEmpty() ? null : found.getFirst();
+    }
+
+    /** Every foe within the cone and range, in sight, the best in line with {@code dir} (and nearest) first. */
+    public static List<LivingEntity> inCone(LivingEntity caster, Vec3 eye, Vec3 dir, double cos, double range) {
+        List<LivingEntity> found = new java.util.ArrayList<>(caster.level().getEntitiesOfClass(LivingEntity.class, caster.getBoundingBox().inflate(range),
             e -> hostileTo(caster, e) && e.distanceToSqr(caster) <= range * range
-                && dir.dot(e.getBoundingBox().getCenter().subtract(eye).normalize()) >= cos && caster.hasLineOfSight(e));
-        return found.stream().min(Comparator.comparingDouble(e -> -dir.dot(e.getBoundingBox().getCenter().subtract(eye).normalize())
-            + e.distanceTo(caster) / (range * 4.0))).orElse(null);
+                && dir.dot(e.getBoundingBox().getCenter().subtract(eye).normalize()) >= cos && caster.hasLineOfSight(e)));
+        found.sort(Comparator.comparingDouble(e -> -dir.dot(e.getBoundingBox().getCenter().subtract(eye).normalize())
+            + e.distanceTo(caster) / (range * 4.0)));
+        return found;
     }
 }

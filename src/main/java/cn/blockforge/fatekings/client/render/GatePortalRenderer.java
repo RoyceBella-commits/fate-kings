@@ -9,7 +9,6 @@ import org.joml.Vector3f;
 
 /** A golden ripple in the air; the treasure's hilt pokes out, then it turns and bares the blade. */
 public class GatePortalRenderer extends FxEntityRenderer<GatePortalEntity> {
-    private static final Vector3f BLADE = new Vector3f(1.0f, 1.0f, 0.0f).normalize();
 
     public GatePortalRenderer(EntityRendererProvider.Context context) {
         super(context);

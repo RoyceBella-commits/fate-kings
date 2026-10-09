@@ -82,6 +82,39 @@ public final class RulesCheck {
         check(KingRules.volleyGates(1000) == 100, "never more than 100 gates");
         check(KingRules.volleyGates(40) > 5 && KingRules.volleyGates(40) < 100, "gates grow while held");
         check(KingRules.GOB_VOLLEY == 60, "volley cooldown 3 s (was 8 s)");
+        // 1.1.3: the gates hang apart in the air, never one wall.
+        double least = Double.MAX_VALUE, wide = 0.0, high = -9.0, low = 9.0, deep = 0.0;
+        for (double phase = 0.0; phase < 6.28; phase += 0.37) {
+            java.util.List<double[]> spots = new java.util.ArrayList<>();
+            for (int i = 0; i < 100; ++i) spots.add(KingRules.gateSpot(i, phase));
+            for (int i = 0; i < spots.size(); ++i) {
+                double[] a = spots.get(i);
+                wide = Math.max(wide, Math.abs(a[0]));
+                high = Math.max(high, a[1]);
+                low = Math.min(low, a[1]);
+                deep = Math.max(deep, a[2]);
+                for (int j = i + 1; j < spots.size(); ++j) {
+                    double[] b = spots.get(j);
+                    least = Math.min(least, Math.sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2])));
+                }
+            }
+        }
+        check(least > 2.0 * 0.9 * KingRules.gateSize(1.0), "100 gates never overlap (closest " + String.format(Locale.ROOT, "%.2f", least)
+            + ", a gate at most " + String.format(Locale.ROOT, "%.2f", 1.8 * KingRules.gateSize(1.0)) + " across)");
+        check(wide >= 12.0 && wide <= 18.0 && high >= 10.0 && high <= 17.0 && low >= 0.0 && deep >= 3.0,
+            "spread wide, high and deep behind him (" + String.format(Locale.ROOT, "%.1f / %.1f / %.1f / %.1f", wide, high, low, deep) + ")");
+        double[] firstSpot = KingRules.gateSpot(0, 0.0);
+        check(Math.hypot(firstSpot[0], firstSpot[1]) < 2.0, "the first gates open close to him");
+        check(KingRules.gateSize(0.0) == 0.75f && Math.abs(KingRules.gateSize(1.0) - 0.9f) < 1.0E-6f, "gate sizes 0.75-0.9");
+        // 1.1.1: Excalibur's trench and crater.
+        check(KingRules.inExcaliburCut(0.0, 0.0, 5.0f) && KingRules.inExcaliburCut(1.9, 0.0, 5.0f) && !KingRules.inExcaliburCut(2.1, 0.0, 5.0f),
+            "the trench is 0.4 of the beam's width to each side");
+        check(KingRules.inExcaliburCut(0.0, -3.1, 5.0f) && !KingRules.inExcaliburCut(0.0, -3.3, 5.0f), "and 1.6 times that deep below the line");
+        check(near(KingRules.excaliburCutDepth(0.0, 9.0f), 5.76) && KingRules.excaliburCutDepth(3.7, 9.0f) == 0.0,
+            "a full charge cuts some 4 blocks below the feet");
+        check(KingRules.excaliburCutDepth(1.0, 5.0f) < KingRules.excaliburCutDepth(0.0, 5.0f), "deepest in the middle");
+        check(KingRules.excaliburBlast(5.0f, false) == 6.0f && KingRules.excaliburBlast(9.0f, false) == 8.0f && KingRules.excaliburBlast(9.0f, true) == 4.0f,
+            "crater 6-8, a replica's 4");
         check(KingRules.GOB_DAMAGE_MIN == 20.0f && KingRules.GOB_DAMAGE_MAX == 30.0f, "treasures hit for 20-30 (was 12-18)");
         check(KingRules.gateMark(0, 3) == 0 && KingRules.gateMark(1, 3) == 1 && KingRules.gateMark(2, 3) == 2 && KingRules.gateMark(3, 3) == 0,
             "gates take the foes in turn, the aimed one first");
@@ -89,7 +122,8 @@ public final class RulesCheck {
         int[] perFoe = new int[3];
         for (int g = 0; g < 100; ++g) ++perFoe[KingRules.gateMark(g, 3)];
         check(perFoe[0] == 34 && perFoe[1] == 33 && perFoe[2] == 33, "100 gates over 3 foes: 34 / 33 / 33");
-        check(KingRules.GOB_MAX_TARGETS == 6 && Math.abs(KingRules.GOB_CONE_COS - Math.cos(Math.toRadians(40.0))) < 0.001, "up to 6 foes within 40 degrees");
+        check(KingRules.GOB_MAX_TARGETS == 10 && Math.abs(KingRules.GOB_CONE_COS - Math.cos(Math.toRadians(40.0))) < 0.001, "up to 10 foes within 40 degrees");
+        check(Math.abs(KingRules.GOB_RELEASE_CONE_COS - Math.cos(Math.toRadians(65.0))) < 0.001, "a held volley re-aims within 65 degrees as it fires");
         double[] still = KingRules.npcLead(new double[]{1, 2, 3}, new double[]{0, 0, 0}, 20.0, 8, 3.0);
         check(still[0] == 1 && still[1] == 2 && still[2] == 3, "a foe standing still: aimed at where it is");
         double[] runner = KingRules.npcLead(new double[]{0, 0, 0}, new double[]{0.2, 0.5, 0}, 6.0, 8, 3.0);
@@ -187,6 +221,28 @@ public final class RulesCheck {
         check(near(led[0], ArcherRules.ARROW_LEAD_MAX), "the arrow's lead is capped");
         check(ArcherRules.arrowDamage(0.0f) == 12.0f && ArcherRules.arrowDamage(1.0f) == 16.0f, "arrows 12-16");
         check(ArcherRules.bowTapCooldown(false) == 4 && ArcherRules.bowTapCooldown(true) == 2, "a tap every 4 ticks, 2 in his marble");
+        // 1.1.1: the triple shot.
+        check(ArcherRules.bowTripleCooldown(false) == 20 && ArcherRules.bowTripleCooldown(true) == 10, "triple shot 1 s, 0.5 s in his marble");
+        check(ArcherRules.tripleYaw(0) == 8.0 && ArcherRules.tripleYaw(1) == 0.0 && ArcherRules.tripleYaw(2) == -8.0, "a fan 8 degrees apart");
+        double[][] three = {{0.9, 0.2, 0.99}, {0.95, 0.5, 0.97}, {0.8, 0.99, 0.6}};
+        int[] p3 = ArcherRules.tripleTargets(three, true);
+        check(p3[1] == 0 && p3[0] == 2 && p3[2] == 1, "the aimed foe takes the centre, the others each a side arrow");
+        int[] p1 = ArcherRules.tripleTargets(new double[][]{{0.9}, {0.99}, {0.9}}, true);
+        check(p1[0] == 0 && p1[1] == 0 && p1[2] == 0, "one foe: all three arrows hunt it");
+        int[] p2 = ArcherRules.tripleTargets(new double[][]{{0.99, 0.5}, {0.9, 0.8}, {0.7, 0.95}}, false);
+        check(p2[1] == 0 && p2[2] == 1 && p2[0] == 0, "nothing aimed: centre takes the best in line, the spare arrow follows it");
+        int[] p0 = ArcherRules.tripleTargets(new double[3][0], false);
+        check(p0[0] == -1 && p0[1] == -1 && p0[2] == -1, "no foe: three straight arrows");
+        check(KingAiRules.emiyaWantsTriple(true, 2, 0.9f) && KingAiRules.emiyaWantsTriple(true, 1, 0.1f)
+            && !KingAiRules.emiyaWantsTriple(true, 1, 0.9f) && !KingAiRules.emiyaWantsTriple(false, 3, 0.0f), "EMIYA's triple shot: at two foes, now and then at one");
+        // 1.1.1: the Red Shroud mends slowly.
+        float idle = 0.0f, fight = 0.0f;
+        for (long t = 0; t < 400; ++t) {
+            idle += ArcherRules.regen(t, 200);
+            fight += ArcherRules.regen(t, 10);
+        }
+        check(near(idle, 40.0) && near(fight, 10.0), "regen: 1 heart a second out of combat, 1 every 4 s in it (20 s: " + idle + " / " + fight + ")");
+        check(ArcherRules.regen(20, 99) == 0.0f && ArcherRules.regen(20, 100) == ArcherRules.REGEN_HP, "out of combat after 5 s unhurt");
         check(ArcherRules.BOW_TAP_TICKS < ArcherRules.CALADBOLG_CHARGE && ArcherRules.CALADBOLG_CHARGE == 30, "tap / Caladbolg at 1.5 s");
         check(ArcherRules.caladbolgCooldown(false) == 900 && ArcherRules.caladbolgCooldown(true) == 1200, "Caladbolg 45 s / NPC 60 s");
         // Rho Aias.
@@ -198,7 +254,8 @@ public final class RulesCheck {
         // The marble and the domain clash.
         check(ArcherRules.ubwAfterClash(500, true) == 440 && ArcherRules.ubwAfterClash(300, false) == 300 && ArcherRules.ubwAfterClash(300, true) == 340,
             "clash: at most 20 s, 2 s more for the first");
-        check(ArcherRules.UBW_TIME == 600 && ArcherRules.UBW_RADIUS == 34.0 && ArcherRules.ubwCooldown(false) == 3600, "30 s, radius 34, 180 s");
+        check(ArcherRules.UBW_TIME == 600 && ArcherRules.UBW_RADIUS == 64.0 && ArcherRules.ubwCooldown(false) == 1200
+            && ArcherRules.ubwCooldown(true) == 1200, "30 s, radius 64 and 60 s like a JJK domain");
         check(ArcherRules.UBW_CHANT_START < ArcherRules.UBW_CHANT && ArcherRules.UBW_CHANT == 60, "the aria takes 3 s");
         // The twin-blade combo.
         int step = -1;
@@ -297,6 +354,10 @@ public final class RulesCheck {
         check(!KingAiRules.gilChainCombo(KingAiRules.SERIOUS, false, true), "not for ordinary foes");
         check(!KingAiRules.gilChainCombo(KingAiRules.SERIOUS, true, false), "not while the chains cool down");
         check(KingAiRules.COMBO_BIND_COOLDOWN < KingRules.ENKIDU_BIND, "against the strong he reaches for the chains more often");
+        check(KingAiRules.gilOpensWithVolley(false, true, true), "a strong foe: he opens with the full volley");
+        check(!KingAiRules.gilOpensWithVolley(true, true, true), "once a fight");
+        check(!KingAiRules.gilOpensWithVolley(false, false, true), "not for ordinary foes");
+        check(!KingAiRules.gilOpensWithVolley(false, true, false), "not while the volley cools down");
         // EMIYA.
         check(KingAiRules.emiyaSwords(5.0, false) && !KingAiRules.emiyaSwords(7.0, false) && KingAiRules.emiyaSwords(8.0, true)
             && !KingAiRules.emiyaSwords(10.0, true), "blades inside 6, the bow beyond 9 (no flicker between)");

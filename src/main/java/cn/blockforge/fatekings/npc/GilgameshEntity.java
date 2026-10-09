@@ -51,6 +51,9 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
     private boolean proposed;
     private int ritual = -1;
     private int charge = -1;
+    /** Ticks into the opening volley (-1: none); whether this fight has had it. */
+    private int opening = -1;
+    private boolean openingDone;
     private int ambientLine = 200;
     private int disdainCooldown;
     /** Last tick he was fighting (or drawing Ea): he stays aloft for 5 s after that. */
@@ -115,6 +118,11 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
         this.firstHit = false;
         this.proposed = false;
         this.infinityBlocked = 0;
+        this.openingDone = false;
+        if (this.opening >= 0) {
+            this.opening = -1;
+            GateOfBabylon.cancelVolley(this);
+        }
     }
 
     @Override
@@ -142,6 +150,11 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
             tickCharge(level, target);
             return;
         }
+        if (this.opening >= 0 && (!fighting || target == null)) {
+            // The foe is gone: the gates close unfired.
+            this.opening = -1;
+            GateOfBabylon.cancelVolley(this);
+        }
         lookForSaber(level);
         if (!fighting) {
             if (--this.ambientLine <= 0) this.ambientLine = 400 + this.random.nextInt(400);
@@ -162,6 +175,10 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
         }
         move(level, target, dist);
         if (this.kingState.reorganizing(now)) return; // treasury reorganisation: fists only
+        if (this.opening >= 0) {
+            tickOpening(target);
+            return;
+        }
         boolean domain = JjkCompat.LOADED && !level.getEntities(this, this.getBoundingBox().inflate(40.0), JjkCompat::domain).isEmpty()
             || cn.blockforge.fatekings.entity.UbwEntity.foreignNear(this, 40.0);
         boolean mahoragaAdapted = JjkCompat.is(target, JjkCompat.MAHORAGA) && this.combatTicks > 320;
@@ -169,6 +186,20 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
         if (KingAiRules.gilWantsEa(this.tier, Sides.worthy(target), this.getHealth() / this.getMaxHealth(), this.infinityBlocked,
                 mahoragaAdapted, domain, eaReady, this.eaUsed, saber, this.hitByExcalibur) && this.hasLineOfSight(target)) {
             startRitual(level, target);
+            return;
+        }
+        boolean strongFoe = Sides.worthy(target) || saber;
+        if (KingAiRules.gilOpensWithVolley(this.openingDone, strongFoe, this.kingState.ready(Skills.GOB_VOLLEY, now)) && this.hasLineOfSight(target)
+                && aloft(level)) {
+            // "Rejoice: the treasury of the king is open to you." Once past his arrogance he holds
+            // the foe in Enkidu while the gates open.
+            this.openingDone = true;
+            this.opening = 0;
+            if (KingAiRules.gilChainCombo(this.tier, true, this.kingState.ready(Skills.ENKIDU_BIND, now))) {
+                Enkidu.bindTarget(level, this, target);
+                this.kingState.cooldown(Skills.ENKIDU_BIND, now, KingAiRules.COMBO_BIND_COOLDOWN);
+            }
+            GateOfBabylon.npcVolleyStart(this, target);
             return;
         }
         if (--this.shotCooldown > 0 || !this.hasLineOfSight(target)) return;
@@ -220,6 +251,30 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
         }
     }
 
+    /**
+     * Risen into the air (the opening volley waits for it, so its wall opens behind him up there):
+     * 3 blocks up, or 2 s into the fight wherever he is (under a low roof he never gets that high).
+     */
+    private boolean aloft(ServerLevel level) {
+        if (this.combatTicks >= 40) return true;
+        return this.isNoGravity() && this.getY() - level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, this.getBlockX(), this.getBlockZ()) >= 3.0;
+    }
+
+    /** The opening volley: gates open behind him for 4 s (5 growing to 100), then all fire at once. */
+    private void tickOpening(LivingEntity target) {
+        ++this.opening;
+        GateOfBabylon.growVolley(this, this.opening);
+        if (this.opening >= KingRules.GOB_VOLLEY_MIN && !GateOfBabylon.volleyHeld(this)) {
+            this.opening = -1; // the treasury refused (cooldown, reorganisation)
+            return;
+        }
+        if (this.opening >= KingRules.GOB_VOLLEY_FULL) {
+            GateOfBabylon.npcReleaseVolley(this, target);
+            this.opening = -1;
+            this.shotCooldown = 60;
+        }
+    }
+
     /** On the ground a fist is all the unworthy get; the treasures come from above. */
     private void move(ServerLevel level, LivingEntity target, double dist) {
         if (dist < 3.0 && this.tickCount % 20 == 0) this.doHurtTarget(level, target);
@@ -249,7 +304,11 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
         this.setNoGravity(true);
         this.getNavigation().stop();
         Vec3 goal;
-        if (target == null || !target.isAlive() || this.ritual >= 0 || this.charge >= 0) {
+        if (this.opening >= 0) {
+            // The gates open behind him where he hangs: he stays put until they fire.
+            goal = this.position();
+            if (target != null) this.getLookControl().setLookAt(target, 30.0f, 60.0f);
+        } else if (target == null || !target.isAlive() || this.ritual >= 0 || this.charge >= 0) {
             goal = new Vec3(this.getX(), Math.max(this.getY(), groundY + 6.0), this.getZ());
         } else {
             Vec3 flat = this.position().subtract(target.position()).multiply(1.0, 0.0, 1.0);
@@ -347,7 +406,15 @@ public class GilgameshEntity extends KingNpcEntity implements Enemy {
     @Override
     public void die(DamageSource source) {
         VoicePlayer.say(this, rival(source.getEntity(), KingRules.KNIGHT) ? Voice.GIL_DEFEAT_SABER : Voice.GIL_DEFEAT);
+        GateOfBabylon.cancelVolley(this);
         super.die(source);
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        // Server side only: the client's copy of him shares the UUID (and, in single player, the JVM).
+        if (!this.level().isClientSide()) GateOfBabylon.cancelVolley(this);
+        super.remove(reason);
     }
 
     @Override

@@ -11,6 +11,7 @@ import cn.blockforge.fatekings.archer.UnlimitedBladeWorks;
 import cn.blockforge.fatekings.combat.JudgementRules.Side;
 import cn.blockforge.fatekings.combat.LineOfFire;
 import cn.blockforge.fatekings.combat.Sides;
+import cn.blockforge.fatekings.combat.Targets;
 import cn.blockforge.fatekings.compat.JjkCompat;
 import cn.blockforge.fatekings.entity.BeamEntity;
 import cn.blockforge.fatekings.entity.GatePortalEntity;
@@ -247,7 +248,10 @@ public class EmiyaEntity extends KingNpcEntity {
         if (!this.swords && --this.shotCooldown <= 0 && this.hasLineOfSight(target)) {
             this.shotCooldown = UbwEntity.inside(this) ? 6 : this.tier == KingAiRules.EMIYA_SERIOUS ? 8 : 12;
             faceExactly(target.getBoundingBox().getCenter());
-            ArcherBow.tap(this);
+            int ahead = Targets.inCone(this, this.getEyePosition(), target.getBoundingBox().getCenter().subtract(this.getEyePosition()).normalize(),
+                ArcherRules.ARROW_START_CONE_COS, ArcherRules.ARROW_START_RANGE).size();
+            if (KingAiRules.emiyaWantsTriple(this.kingState.ready(Skills.BOW_TRIPLE, now), ahead, this.random.nextFloat())) ArcherBow.triple(this);
+            else ArcherBow.tap(this);
         }
         traceFoe(level, target);
     }

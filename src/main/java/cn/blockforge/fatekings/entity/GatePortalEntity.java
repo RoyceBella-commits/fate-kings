@@ -104,6 +104,13 @@ public class GatePortalEntity extends Entity {
         this.entityData.set(FIRE_AT, this.tickCount + Math.max(4, delay));
     }
 
+    /** Turns the gate on a new spot (before it fires). */
+    public void retarget(Vec3 mark) {
+        if (this.fired || mark == null) return;
+        this.aimPoint = mark;
+        face(mark.subtract(this.position()));
+    }
+
     /** The spot this gate fires at. */
     public Vec3 aimPoint() {
         return this.aimPoint;

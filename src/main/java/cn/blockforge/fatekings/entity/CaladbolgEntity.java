@@ -17,8 +17,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.level.Explosion;
-import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -30,18 +28,6 @@ import net.minecraft.world.phys.Vec3;
  * within 6 blocks is judged too and the ground is blasted.
  */
 public class CaladbolgEntity extends BeamEntity {
-    /** The explosion only breaks blocks; the judgement already dealt with the living. */
-    private static final ExplosionDamageCalculator BLOCKS_ONLY = new ExplosionDamageCalculator() {
-        @Override
-        public boolean shouldDamageEntity(Explosion explosion, Entity entity) {
-            return false;
-        }
-
-        @Override
-        public float getKnockbackMultiplier(Entity entity) {
-            return 0.6f;
-        }
-    };
     private UUID lockedId;
 
     public CaladbolgEntity(EntityType<? extends CaladbolgEntity> type, Level level) {
@@ -119,8 +105,7 @@ public class CaladbolgEntity extends BeamEntity {
                 e -> e != owner && e.isAlive() && e.getBoundingBox().getCenter().distanceToSqr(at) <= r * r)) {
             if (this.judged.add(e.getId())) Judgement.strike(level, owner, this, e, Weapon.CALADBOLG, 1.0f);
         }
-        level.explode(owner, null, BLOCKS_ONLY, at.x, at.y, at.z, 5.0f, false,
-            Terrain.enabled() ? Level.ExplosionInteraction.MOB : Level.ExplosionInteraction.NONE);
+        Terrain.blast(level, owner, at, 5.0f);
         Fx.particles(level, ParticleTypes.EXPLOSION_EMITTER, at.x, at.y, at.z, 2, 1.0, 1.0, 1.0, 0.0);
         Fx.particles(level, Fx.dust(0xE8302A, 2.4f), at.x, at.y, at.z, 80, 3.0, 3.0, 3.0, 0.0);
         Fx.particles(level, ParticleTypes.END_ROD, at.x, at.y, at.z, 60, 2.5, 2.5, 2.5, 0.2);

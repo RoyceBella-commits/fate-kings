@@ -40,6 +40,8 @@ public final class FateNet {
     public static final Identifier S2C_SWING = FateKings.id("swing");
     /** EMIYA's twin-blade stroke (its place in the combo). */
     public static final Identifier C2S_TWIN = FateKings.id("twin");
+    /** EMIYA's sneak + attack with the black bow: three arrows at once (no data). */
+    public static final Identifier C2S_TRIPLE = FateKings.id("triple");
     /** The Hill of Swords screen: project / forget / select an entry. */
     public static final Identifier C2S_PROJECT = FateKings.id("project");
     /** The Hill of Swords to its owner (a registry-aware buffer of item stacks). */
@@ -64,6 +66,7 @@ public final class FateNet {
         register(S2C_SWING, 12, false);
         register(C2S_TWIN, 2, true);
         register(C2S_PROJECT, 6, true);
+        register(C2S_TRIPLE, 1, true);
         register(S2C_ARSENAL, 65536, false);
     }
 

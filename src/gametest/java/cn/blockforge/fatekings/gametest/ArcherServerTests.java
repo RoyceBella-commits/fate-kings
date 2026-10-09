@@ -1,5 +1,6 @@
 package cn.blockforge.fatekings.gametest;
 
+import cn.blockforge.fatekings.archer.ArcherBow;
 import cn.blockforge.fatekings.archer.ArcherPassives;
 import cn.blockforge.fatekings.archer.ArcherRules;
 import cn.blockforge.fatekings.archer.Arsenal;
@@ -13,9 +14,12 @@ import cn.blockforge.fatekings.compat.JjkCompat;
 import cn.blockforge.fatekings.config.FateConfig;
 import cn.blockforge.fatekings.entity.CaladbolgEntity;
 import cn.blockforge.fatekings.entity.EnumaElishEntity;
+import cn.blockforge.fatekings.entity.ExcaliburWaveEntity;
+import cn.blockforge.fatekings.entity.GatePortalEntity;
 import cn.blockforge.fatekings.entity.ProjectedArrowEntity;
 import cn.blockforge.fatekings.entity.TreasureProjectile;
 import cn.blockforge.fatekings.entity.UbwEntity;
+import cn.blockforge.fatekings.hero.GateOfBabylon;
 import cn.blockforge.fatekings.king.KingRules;
 import cn.blockforge.fatekings.king.Kings;
 import cn.blockforge.fatekings.king.Skills;
@@ -457,6 +461,256 @@ public class ArcherServerTests {
     }
 
     /** Gates near {@code e} (other tests' far away). */
+    // ---- 1.1.1 ----
+
+    @GameTest
+    public void tripleShotFansAtThreeFoes(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        EmiyaEntity emiya = still(h.spawn(FateEntities.EMIYA, 1.5f, 2.0f, 4.5f));
+        LivingEntity centre = still(h.spawn(EntityTypes.ZOMBIE, 7.5f, 2.0f, 4.5f));
+        LivingEntity left = still(h.spawn(EntityTypes.ZOMBIE, 7.0f, 2.0f, 2.0f));
+        LivingEntity right = still(h.spawn(EntityTypes.ZOMBIE, 7.0f, 2.0f, 7.0f));
+        faceEast(emiya);
+        emiya.setTarget(centre);
+        h.assertTrue(ArcherBow.triple(emiya), "three arrows loosed");
+        h.assertFalse(ArcherBow.triple(emiya), "then a second's cooldown");
+        h.assertTrue(ArcherBow.tap(emiya), "which is not the tap's");
+        List<ProjectedArrowEntity> arrows = level.getEntitiesOfClass(ProjectedArrowEntity.class, emiya.getBoundingBox().inflate(4.0),
+            a -> a.getOwner() == emiya);
+        java.util.Set<LivingEntity> hunted = new java.util.HashSet<>();
+        for (ProjectedArrowEntity a : arrows) {
+            if (a.target() != null) hunted.add(a.target());
+            a.discard();
+        }
+        h.assertTrue(arrows.size() == 4, "three arrows and a tap (" + arrows.size() + ")");
+        h.assertTrue(hunted.containsAll(List.of(centre, left, right)), "each foe hunted by an arrow (" + hunted.size() + ")");
+        h.succeed();
+    }
+
+    @GameTest
+    public void tripleShotAllHuntOneFoe(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        EmiyaEntity emiya = still(h.spawn(FateEntities.EMIYA, 1.5f, 2.0f, 4.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 7.5f, 2.0f, 4.5f));
+        faceEast(emiya);
+        emiya.setTarget(zombie);
+        h.assertTrue(ArcherBow.triple(emiya), "three arrows loosed");
+        List<ProjectedArrowEntity> arrows = level.getEntitiesOfClass(ProjectedArrowEntity.class, emiya.getBoundingBox().inflate(4.0),
+            a -> a.getOwner() == emiya);
+        boolean all = arrows.size() == 3 && arrows.stream().allMatch(a -> a.target() == zombie);
+        // Fanned out: the side arrows leave at an angle to the centre one.
+        double spread = 0.0;
+        for (ProjectedArrowEntity a : arrows) {
+            for (ProjectedArrowEntity b : arrows) spread = Math.max(spread, Math.toDegrees(Math.acos(Math.min(1.0,
+                a.getDeltaMovement().normalize().dot(b.getDeltaMovement().normalize())))));
+            a.discard();
+        }
+        h.assertTrue(all, "one foe: all three hunt it");
+        h.assertTrue(Math.abs(spread - 2 * ArcherRules.TRIPLE_SPREAD_DEG) < 0.5, "a fan 16 degrees wide (" + spread + ")");
+        h.succeed();
+    }
+
+    @GameTest
+    public void theShroudMendsSlowly(GameTestHelper h) {
+        EmiyaEntity emiya = still(h.spawn(FateEntities.EMIYA, 1.5f, 2.0f, 4.5f));
+        var s = Kings.of(emiya);
+        long t0 = (h.getLevel().getGameTime() / 80 + 10) * 80;
+        emiya.setHealth(100.0f);
+        s.lastCombat = t0 - 200;
+        for (long t = t0; t < t0 + 40; ++t) ArcherPassives.tick(emiya, s, t);
+        h.assertTrue(Math.abs(emiya.getHealth() - 110.0f) < 0.01f, "out of combat: 2 s mend 2 hearts, x2.5 for the NPC (" + emiya.getHealth() + ")");
+        emiya.setHealth(100.0f);
+        s.lastCombat = t0 + 40;
+        for (long t = t0 + 40; t < t0 + 120; ++t) ArcherPassives.tick(emiya, s, t);
+        h.assertTrue(Math.abs(emiya.getHealth() - 105.0f) < 0.01f, "in combat: 1 heart in 4 s (" + emiya.getHealth() + ")");
+        h.succeed();
+    }
+
+    @GameTest
+    public void aHeldVolleySpreadsApartAndTheNpcReaims(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f));
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 6.5f, 2.0f, 6.5f));
+        GateOfBabylon.npcVolleyStart(gil, saber);
+        GateOfBabylon.growVolley(gil, KingRules.GOB_VOLLEY_FULL);
+        List<GatePortalEntity> gates = GateOfBabylon.volley(gil);
+        Vec3 eye = gil.getEyePosition();
+        double spread = gates.stream().mapToDouble(g -> Math.hypot(g.getX() - eye.x, g.getZ() - eye.z)).max().orElse(0.0);
+        double high = gates.stream().mapToDouble(g -> g.getY() - eye.y).max().orElse(0.0);
+        double least = Double.MAX_VALUE;
+        for (int i = 0; i < gates.size(); ++i) {
+            for (int j = i + 1; j < gates.size(); ++j) least = Math.min(least, gates.get(i).position().distanceTo(gates.get(j).position()));
+        }
+        // She moves while the gates open: they turn on where she is at the release.
+        Vec3 moved = h.absoluteVec(new Vec3(4.5, 2.0, 7.5));
+        saber.setPos(moved);
+        saber.xo = saber.getX();
+        saber.yo = saber.getY();
+        saber.zo = saber.getZ();
+        GateOfBabylon.npcReleaseVolley(gil, saber);
+        Vec3 first = gates.isEmpty() ? null : gates.get(0).aimPoint();
+        gates.forEach(GatePortalEntity::discard);
+        h.assertTrue(gates.size() == KingRules.GOB_VOLLEY_MAX_GATES, "100 gates (" + gates.size() + ")");
+        h.assertTrue(spread >= 9.0, "spread wide: " + spread + " blocks out");
+        h.assertTrue(high >= 6.0, "and high: " + high);
+        h.assertTrue(least > 1.8, "no two gates overlap (closest " + least + ")");
+        h.assertTrue(first != null && first.distanceTo(saber.getBoundingBox().getCenter()) < 0.5, "re-aimed at her at the release (" + first + ")");
+        h.assertFalse(GateOfBabylon.volleyHeld(gil), "the volley is let go");
+        h.succeed();
+    }
+
+    @GameTest(maxTicks = 100)
+    public void gilgameshOpensWithAFullVolleyBeforeAStrongFoe(GameTestHelper h) {
+        GilgameshEntity gil = h.spawn(FateEntities.GILGAMESH, 1.5f, 2.0f, 1.5f);
+        ArtoriaEntity saber = still(h.spawn(FateEntities.ARTORIA, 6.5f, 2.0f, 6.5f));
+        Kings.of(saber).cooldown(Skills.AVALON_DOME, h.getLevel().getGameTime(), KingRules.AVALON_DOME);
+        gil.setTarget(saber);
+        // He rises first (up to 2 s), then holds still while the gates open for 4 s.
+        h.runAfterDelay(80, () -> {
+            boolean held = GateOfBabylon.volleyHeld(gil);
+            int n = GateOfBabylon.volley(gil).size();
+            double up = gil.getY() - h.absoluteVec(new Vec3(0.0, 2.0, 0.0)).y;
+            gil.discard();
+            h.assertTrue(held && n > 30, "gates still opening (" + held + ", " + n + ")");
+            h.assertTrue(up >= 3.0, "opened aloft (" + up + ")");
+            h.assertFalse(GateOfBabylon.volleyHeld(gil), "gone with him");
+            h.succeed();
+        });
+    }
+
+    @GameTest
+    public void aWholeSetSwappedAtOnceStillWaits(GameTestHelper h) {
+        ServerPlayer p = h.makeMockServerPlayerInLevel();
+        p.setItemSlot(EquipmentSlot.HEAD, new ItemStack(FateItems.KNIGHT_RIBBON));
+        p.setItemSlot(EquipmentSlot.CHEST, new ItemStack(FateItems.KNIGHT_BREASTPLATE));
+        p.setItemSlot(EquipmentSlot.LEGS, new ItemStack(FateItems.KNIGHT_SKIRT));
+        p.setItemSlot(EquipmentSlot.FEET, new ItemStack(FateItems.KNIGHT_BOOTS));
+        Kings.tick(p);
+        h.assertTrue(Kings.isKnight(p), "the King of Knights");
+        // All four pieces at once (one tick): no straight swap past the 15 s lock.
+        p.setItemSlot(EquipmentSlot.HEAD, new ItemStack(FateItems.SHROUD_HEADPIECE));
+        p.setItemSlot(EquipmentSlot.CHEST, new ItemStack(FateItems.SHROUD_COAT));
+        p.setItemSlot(EquipmentSlot.LEGS, new ItemStack(FateItems.SHROUD_LEGGINGS));
+        p.setItemSlot(EquipmentSlot.FEET, new ItemStack(FateItems.SHROUD_BOOTS));
+        Kings.tick(p);
+        h.assertTrue(Kings.of(p).king == KingRules.NONE && Kings.of(p).lockedFrom == KingRules.KNIGHT, "swap lock: no Archer yet ("
+            + Kings.of(p).king + ")");
+        // Back into her own set: no lock on the same king.
+        p.setItemSlot(EquipmentSlot.HEAD, new ItemStack(FateItems.KNIGHT_RIBBON));
+        p.setItemSlot(EquipmentSlot.CHEST, new ItemStack(FateItems.KNIGHT_BREASTPLATE));
+        p.setItemSlot(EquipmentSlot.LEGS, new ItemStack(FateItems.KNIGHT_SKIRT));
+        p.setItemSlot(EquipmentSlot.FEET, new ItemStack(FateItems.KNIGHT_BOOTS));
+        Kings.tick(p);
+        h.assertTrue(Kings.isKnight(p), "back to the same king at once");
+        h.succeed();
+    }
+
+    @GameTest
+    public void aProjectionComesToHandOnAFullHotbar(GameTestHelper h) {
+        ServerPlayer p = archer(h);
+        for (int i = 0; i < 9; ++i) p.getInventory().setItem(i, new ItemStack(i == 0 ? FateItems.UNLIMITED_BLADE_WORKS : Items.DIRT, 1 + i));
+        p.getInventory().setSelectedSlot(0);
+        h.assertTrue(Projection.give(p, new ItemStack(Items.DIAMOND_SWORD)), "projected");
+        ItemStack hand = p.getMainHandItem();
+        h.assertTrue(hand.is(Items.DIAMOND_SWORD) && Projection.projected(hand), "the copy in hand (" + hand + ")");
+        h.assertTrue(p.getInventory().getItem(0).is(FateItems.UNLIMITED_BLADE_WORKS), "his own phantasm stays where it was");
+        int dirt = 0;
+        for (int i = 0; i < p.getInventory().getContainerSize(); ++i) if (p.getInventory().getItem(i).is(Items.DIRT)) dirt += p.getInventory().getItem(i).getCount();
+        h.assertTrue(dirt == 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9, "the item it replaced went into the inventory (" + dirt + ")");
+        h.succeed();
+    }
+
+    @GameTest
+    public void theHillStartsWithHisOwnArms(GameTestHelper h) {
+        ServerPlayer p = archer(h);
+        Arsenal.Data data = Arsenal.of(p);
+        h.assertTrue(data.seeded && data.entries.size() == Arsenal.defaults().size(), "his own arms on the hill (" + data.entries.size() + ")");
+        h.assertTrue(data.selectedStack().is(Items.DIAMOND_SWORD), "the diamond sword ready to project");
+        Arsenal.forget(data, 0);
+        Arsenal.seed(data, 0L);
+        h.assertTrue(data.entries.size() == Arsenal.defaults().size() - 1, "seeded once only: what he forgets stays forgotten");
+        h.succeed();
+    }
+
+    // ---- 1.1.3 ----
+
+    @GameTest(maxTicks = 80)
+    public void theMarbleStopsEveryTreasure(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        EmiyaEntity emiya = still(h.spawn(FateEntities.EMIYA, 3.5f, 2.0f, 3.5f));
+        GilgameshEntity gil = still(h.spawn(FateEntities.GILGAMESH, 6.5f, 2.0f, 6.5f));
+        UbwEntity marble = UbwEntity.open(level, emiya, 6.0);
+        h.runAfterDelay(ArcherRules.UBW_UNFOLD + 2, () -> {
+            float hp = emiya.getHealth();
+            List<TreasureProjectile> fired = new java.util.ArrayList<>();
+            for (int i = 0; i < 12; ++i) {
+                Vec3 from = h.absoluteVec(new Vec3(6.5, 3.0 + (i % 3) * 0.4, 6.5 - (i % 4) * 0.3));
+                TreasureProjectile t = TreasureProjectile.create(level, gil, from, new ItemStack(Items.IRON_SWORD), TreasureProjectile.NONE, true);
+                Vec3 to = emiya.getBoundingBox().getCenter().subtract(from);
+                t.shoot(to.x, to.y, to.z, 3.0f, 0.0f);
+                level.addFreshEntity(t);
+                fired.add(t);
+            }
+            h.runAfterDelay(6, () -> {
+                float after = emiya.getHealth();
+                long left = fired.stream().filter(t -> !t.isRemoved()).count();
+                marble.discard();
+                fired.forEach(TreasureProjectile::discard);
+                h.assertTrue(after == hp, "not one treasure reached him (" + hp + " -> " + after + ")");
+                h.assertTrue(left == 0, "every treasure was struck down (" + left + " left)");
+                h.succeed();
+            });
+        });
+    }
+
+    @GameTest(maxTicks = 120)
+    public void theHillsSwordsRiseAimAndStrike(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        EmiyaEntity emiya = still(h.spawn(FateEntities.EMIYA, 1.5f, 2.0f, 1.5f));
+        LivingEntity zombie = still(h.spawn(EntityTypes.ZOMBIE, 5.5f, 2.0f, 5.5f));
+        zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1024.0);
+        zombie.setHealth(1024.0f);
+        UbwEntity marble = UbwEntity.open(level, emiya, 7.0);
+        java.util.Set<Integer> phases = new java.util.HashSet<>();
+        for (int i = 1; i < 100; ++i) {
+            h.runAfterDelay(i, () -> level.getEntitiesOfClass(cn.blockforge.fatekings.entity.UbwSwordEntity.class, marble.getBoundingBox().inflate(12.0),
+                x -> true).forEach(x -> phases.add(x.phase())));
+        }
+        h.runAfterDelay(100, () -> {
+            float hp = zombie.getHealth();
+            marble.discard();
+            h.assertTrue(phases.contains(cn.blockforge.fatekings.entity.UbwSwordEntity.RISING) && phases.contains(cn.blockforge.fatekings.entity.UbwSwordEntity.AIMING)
+                && phases.contains(cn.blockforge.fatekings.entity.UbwSwordEntity.FLYING), "rise, take aim, fly (" + phases + ")");
+            h.assertTrue(hp < 1024.0f, "the swords strike (" + hp + ", phases " + phases + ")");
+            h.succeed();
+        });
+    }
+
+    @GameTest
+    public void theArcherLeapsLikeTheKnight(GameTestHelper h) {
+        ServerPlayer p = archer(h);
+        p.setDeltaMovement(Vec3.ZERO);
+        cn.blockforge.fatekings.knight.KnightLeap.handle(p, 0.0f, 0.0f, true);
+        h.assertTrue(p.getDeltaMovement().length() > 1.0, "space: the mana-burst leap (" + p.getDeltaMovement() + ")");
+        h.succeed();
+    }
+
+    @GameTest
+    public void excaliburCutsATrench(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        BlockPos[] cut = {new BlockPos(3, 5, 3), new BlockPos(3, 3, 3), new BlockPos(4, 5, 4), new BlockPos(5, 7, 3)};
+        BlockPos[] kept = {new BlockPos(3, 5, 6), new BlockPos(3, 1, 3), new BlockPos(5, 5, 0)};
+        for (BlockPos p : cut) h.setBlock(p, Blocks.STONE);
+        for (BlockPos p : kept) h.setBlock(p, Blocks.STONE);
+        h.assertTrue(Terrain.enabled(), "terrain effects on");
+        ExcaliburWaveEntity.cut(level, h.absoluteVec(new Vec3(0.5, 5.5, 3.5)), h.absoluteVec(new Vec3(6.5, 5.5, 3.5)), 5.0f);
+        h.runAfterDelay(3, () -> {
+            for (BlockPos p : cut) h.assertBlockNotPresent(Blocks.STONE, p);
+            for (BlockPos p : kept) h.assertBlockPresent(Blocks.STONE, p);
+            h.succeed();
+        });
+    }
+
     @SuppressWarnings("unused")
     private static List<Entity> near(LivingEntity e) {
         return e.level().getEntities(e, e.getBoundingBox().inflate(8.0));

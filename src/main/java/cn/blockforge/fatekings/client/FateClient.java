@@ -159,12 +159,17 @@ public final class FateClient {
      * The King of Knights leaps on jump (Mana Burst), like Sukuna's far bound: straight ahead along the
      * view, or towards the held movement keys. Sneak + jump stays an ordinary jump.
      */
+    /** The knight's space-bar leap; the Red Archer has it too. */
+    private static boolean leaper() {
+        return ClientKingState.king == KingRules.KNIGHT || ClientKingState.king == KingRules.ARCHER;
+    }
+
     private static void leapInput(Minecraft mc) {
         var p = mc.player;
         boolean down = mc.options.keyJump.isDown();
         boolean edge = down && !jumpWasDown;
         jumpWasDown = down;
-        if (!edge || p == null || ClientKingState.king != KingRules.KNIGHT || mc.gui.screen() != null) return;
+        if (!edge || p == null || !leaper() || mc.gui.screen() != null) return;
         // Standing on the water surface counts as ground (the Lady of the Lake's blessing).
         boolean swimming = (p.isInWater() || p.isInLava()) && !p.onGround();
         if (p.isShiftKeyDown() || p.isPassenger() || p.getAbilities().flying || swimming || p.onClimbable()
@@ -186,7 +191,7 @@ public final class FateClient {
         var p = mc.player;
         if (leapTicks < 0 || p == null) return;
         ++leapTicks;
-        if (leapTicks > 3 && (p.onGround() || p.isInWater()) || leapTicks > 200 || ClientKingState.king != KingRules.KNIGHT) {
+        if (leapTicks > 3 && (p.onGround() || p.isInWater()) || leapTicks > 200 || !leaper()) {
             leapTicks = -1;
             return;
         }

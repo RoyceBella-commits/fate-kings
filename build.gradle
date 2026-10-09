@@ -54,10 +54,17 @@ dependencies {
 }
 
 sourceSets {
+    // Empty stand-ins for a few Gojo x Sukuna classes, so compat mixins can name them exactly. Compile
+    // only: never in the jar; at run time the real classes are there (the mixins apply only with that mod).
+    jjkstubs {
+    }
     checks {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
+}
+dependencies {
+    compileOnly sourceSets.jjkstubs.output
 }
 tasks.register('verifyRules', JavaExec) {
     dependsOn checksClasses, processResources

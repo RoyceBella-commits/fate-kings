@@ -7,7 +7,8 @@
     "CameraShakeMixin",
     "AttackInputMixin",
     "SwingStyleMixin",
-    "FirstPersonSwingMixin"
+    "FirstPersonSwingMixin",
+    "UbwTerrainMixin"
   ],
   "injectors": {
     "defaultRequire": 1

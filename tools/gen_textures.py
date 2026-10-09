@@ -1568,27 +1568,151 @@ def twin_trail():
     return img
 
 
+def _lattice(seed, period):
+    rnd = random.Random(seed)
+    return [[rnd.random() for _ in range(period)] for _ in range(period)]
+
+
+def tile_noise(x, y, grid, period):
+    """Value noise that wraps every {period} cells (smooth-stepped bilinear)."""
+    x0, y0 = int(math.floor(x)), int(math.floor(y))
+    fx, fy = x - x0, y - y0
+    fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+    a = grid[y0 % period][x0 % period]
+    b = grid[y0 % period][(x0 + 1) % period]
+    c = grid[(y0 + 1) % period][x0 % period]
+    d = grid[(y0 + 1) % period][(x0 + 1) % period]
+    return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy
+
+
+def fbm(u, v, grids, base=4, octaves=5):
+    """Tileable fractal noise over u, v in [0, 1) (wraps in both)."""
+    total, amp, norm = 0.0, 1.0, 0.0
+    for o in range(octaves):
+        period = base * (2 ** o)
+        total += amp * tile_noise(u * period, v * period, grids[o], period)
+        norm += amp
+        amp *= 0.5
+    return total / norm
+
+
 def ubw_sky():
-    """The marble's sky, top to bottom: hazy amber, a burning horizon, the dark red wasteland beyond the wall."""
-    w, h = 256, 128
+    """The marble's sky, top to bottom: smoky amber overhead with long drifting clouds, a burning gold
+    horizon, and dark haze below it (only ever seen past the ground's edge). Wraps round in u."""
+    w, h = 512, 256
     img = new(w, h)
-    rnd = random.Random(42)
-    streaks = [(rnd.uniform(0.1, 0.45), rnd.uniform(0.004, 0.012), rnd.uniform(0, math.tau)) for _ in range(14)]
+    grids = [_lattice(100 + o, 4 * (2 ** o)) for o in range(6)]
+    streak = [_lattice(200 + o, 4 * (2 ** o)) for o in range(6)]
     for y in range(h):
         v = y / (h - 1)
-        if v < 0.55:
-            base = mix(C("F2B05A"), C("E2622A"), (v / 0.55) ** 1.4)
-        elif v < 0.62:
-            base = mix(C("E2622A"), C("8A1A10"), (v - 0.55) / 0.07)
+        if v < 0.30:
+            base = mix(C("6E3418"), C("B85A22"), (v / 0.30) ** 1.2)
+        elif v < 0.47:
+            base = mix(C("B85A22"), C("F0A040"), (v - 0.30) / 0.17)
+        elif v < 0.50:
+            base = mix(C("F0A040"), C("FFD88A"), (v - 0.47) / 0.03)
+        elif v < 0.56:
+            base = mix(C("FFD88A"), C("A8441C"), (v - 0.50) / 0.06)
         else:
-            base = mix(C("8A1A10"), C("3A0A08"), min(1.0, (v - 0.62) / 0.38))
+            base = mix(C("A8441C"), C("2A0E08"), min(1.0, (v - 0.56) / 0.30))
         for x in range(w):
+            u = x / w
             c = base
-            for sv, sw, ph in streaks:
-                d = abs(v - sv - 0.01 * math.sin(x / w * math.tau * 2 + ph))
-                if d < sw:
-                    c = mix(c, C("6A2A1A"), 0.35 * (1 - d / sw))
+            if v < 0.49:
+                # Clouds: long, stretched along the horizon, thicker and darker overhead.
+                n = fbm(u, v * 3.2 % 1.0, grids, base=4, octaves=6)
+                band = fbm(u * 0.5 % 1.0, v, streak, base=4, octaves=3)
+                body = n * 0.75 + band * 0.45
+                dens = min(1.0, max(0.0, body - 0.55) * 2.6) * (0.55 + 0.45 * (1.0 - v / 0.49))
+                lit = max(0.0, 1.0 - abs(v - 0.42) / 0.12)
+                cloud = mix(C("4A2010"), C("E07A30"), 0.25 + 0.6 * lit)
+                c = mix(c, cloud, dens * 0.85)
+                edge = max(0.0, 1.0 - abs(body - 0.55) * 14.0)
+                c = mix(c, C("FFB860"), edge * 0.35 * (0.4 + lit))
             put(img, x, y, with_alpha(c, 255))
+    return img
+
+
+def ubw_ground():
+    """Scorched earth for the floor of the marble: charred brown soil, cracks where embers still glow,
+    flecks of ash. Tiles both ways."""
+    n = 128
+    img = new(n, n)
+    soil = [_lattice(300 + o, 4 * (2 ** o)) for o in range(5)]
+    crack = [_lattice(400 + o, 4 * (2 ** o)) for o in range(4)]
+    rnd = random.Random(7)
+    for y in range(n):
+        for x in range(n):
+            u, v = x / n, y / n
+            t = fbm(u, v, soil, base=4, octaves=5)
+            c = mix(C("1E140E"), C("5A3A26"), min(1.0, max(0.0, (t - 0.25) * 1.6)))
+            k = fbm(u, v, crack, base=4, octaves=4)
+            vein = max(0.0, 1.0 - abs(k - 0.5) * 22.0)
+            if vein > 0.0:
+                c = mix(c, C("0C0705"), vein * 0.85)
+                if t > 0.52:
+                    c = mix(c, C("C0501C"), vein * 0.6 * min(1.0, (t - 0.52) * 6.0))
+            if rnd.random() < 0.035:
+                c = mix(c, C("7A6A60"), 0.5 + rnd.random() * 0.3)
+            put(img, x, y, with_alpha(c, 255))
+    return img
+
+
+def ubw_mist():
+    """The haze where the scorched plain meets the sky: thick at the bottom, gone at the top."""
+    w, h = 4, 64
+    img = new(w, h)
+    for y in range(h):
+        v = y / (h - 1)
+        a = v ** 1.6
+        c = mix(C("F2B060"), C("A8441C"), v)
+        for x in range(w):
+            put(img, x, y, with_alpha(c, int(255 * a)))
+    return img
+
+
+def ubw_sun():
+    """The sun of the marble, low in the west of its sky: a soft-edged disc, white-gold at the heart and
+    deepening to orange-red at the rim (limb darkening), faint mottling across it, a close bloom round it."""
+    n = 256
+    img = new(n, n)
+    gran = [_lattice(500 + o, 8 * (2 ** o)) for o in range(3)]
+    disc = 0.46
+    for y in range(n):
+        for x in range(n):
+            dx, dy = (x - 127.5) / 128.0, (y - 127.5) / 128.0
+            r = math.hypot(dx, dy)
+            if r <= disc + 0.01:
+                q = min(1.0, r / disc)
+                mu = math.sqrt(max(0.0, 1.0 - q * q))
+                limb = 0.38 + 0.62 * mu ** 0.8
+                c = mix(C("FA6E1E"), C("FFF4D2"), mu ** 0.5)
+                mottle = 0.94 + 0.06 * fbm(x / n, y / n, gran, base=8, octaves=3)
+                c = (min(255, int(c[0] * (0.9 + 0.1 * limb) * mottle)), int(c[1] * (0.25 + 0.75 * limb) * mottle), int(c[2] * limb * mottle), 255)
+                edge = max(0.0, min(1.0, (disc + 0.01 - r) / 0.02))
+                bloom = 200 * math.exp(-(max(0.0, r - disc)) * 16.0)
+                put(img, x, y, with_alpha(c, int(255 * edge + (1 - edge) * bloom)))
+            elif r < 1.0:
+                a = 200 * math.exp(-(r - disc) * 16.0) + 40 * math.exp(-(r - disc) * 4.0)
+                a *= 1.0 - max(0.0, (r - 0.9) / 0.1)
+                if a >= 1:
+                    put(img, x, y, with_alpha(mix(C("FFB060"), C("FF6A28"), min(1.0, (r - disc) * 2.0)), int(a)))
+    return img
+
+
+def ubw_sun_glow():
+    """The glow round the sun and along the horizon: soft amber falling off to nothing."""
+    n = 128
+    img = new(n, n)
+    for y in range(n):
+        for x in range(n):
+            r = math.hypot((x - 63.5) / 64.0, (y - 63.5) / 64.0)
+            if r >= 1.0:
+                continue
+            a = 0.8 * math.exp(-r * 3.2) + 0.2 * math.exp(-r * 1.1)
+            a *= 1.0 - max(0.0, (r - 0.8) / 0.2) ** 2
+            c = mix(C("FFC07A"), C("FF5A28"), min(1.0, r * 1.3))
+            put(img, x, y, with_alpha(c, int(255 * a)))
     return img
 
 
@@ -1679,6 +1803,10 @@ def main():
     save(twin_trail(), "misc/twin_trail.png")
     save(ubw_sky(), "misc/ubw_sky.png")
     save(ubw_gear(), "misc/ubw_gear.png")
+    save(ubw_sun(), "misc/ubw_sun.png")
+    save(ubw_ground(), "misc/ubw_ground.png")
+    save(ubw_mist(), "misc/ubw_mist.png")
+    save(ubw_sun_glow(), "misc/ubw_sun_glow.png")
 
     save(gate_ripple(), "misc/gate_ripple.png")
     save(labyrinth(), "misc/labyrinth.png")
@@ -1700,7 +1828,7 @@ def main():
                          "entity/equipment/humanoid/knight_regalia.png", "entity/equipment/humanoid_leggings/knight_regalia.png",
                          "entity/gilgamesh.png", "entity/artoria.png", "entity/equipment/horse_body/knight_barding.png",
                          "entity/equipment/humanoid/red_shroud.png", "entity/equipment/humanoid_leggings/red_shroud.png", "entity/emiya.png",
-                         "misc/ubw_sky.png", "misc/ubw_gear.png", "misc/rho_aias_petal.png"):
+                         "misc/ubw_sky.png", "misc/ubw_gear.png", "misc/rho_aias_petal.png", "misc/ubw_sun.png"):
             im = Image.open(TEX / rel_path)
             big = Image.new("RGBA", (im.width * 8, im.height * 8), (60, 60, 70, 255))
             big.alpha_composite(im.resize((im.width * 8, im.height * 8), Image.NEAREST))

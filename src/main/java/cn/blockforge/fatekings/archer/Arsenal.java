@@ -29,21 +29,25 @@ public final class Arsenal {
     public static final class Data {
         public static final Codec<Data> CODEC = RecordCodecBuilder.create(i -> i.group(
             Entry.CODEC.listOf().optionalFieldOf("entries", List.of()).forGetter(d -> d.entries),
-            Codec.INT.optionalFieldOf("selected", -1).forGetter(d -> d.selected)
+            Codec.INT.optionalFieldOf("selected", -1).forGetter(d -> d.selected),
+            Codec.BOOL.optionalFieldOf("seeded", false).forGetter(d -> d.seeded)
         ).apply(i, Data::new));
 
         public final List<Entry> entries;
         public int selected;
+        /** Whether his own arms (the defaults) were laid on the hill (once, the first time he is the Archer). */
+        public boolean seeded;
         /** Changed since the owner's screen was last sent. */
         public transient boolean dirty = true;
 
         public Data() {
-            this(List.of(), -1);
+            this(List.of(), -1, false);
         }
 
-        private Data(List<Entry> entries, int selected) {
+        private Data(List<Entry> entries, int selected, boolean seeded) {
             this.entries = new ArrayList<>(entries);
             this.selected = selected;
+            this.seeded = seeded;
         }
 
         public ItemStack selectedStack() {
@@ -92,6 +96,22 @@ public final class Arsenal {
         data.selected = data.entries.size() - 1;
         data.dirty = true;
         return forgot;
+    }
+
+    /**
+     * The first time a player is the Archer his hill already holds what every EMIYA knows by heart
+     * (the defaults), the diamond sword ready to project; what he had recorded stays selected.
+     */
+    public static void seed(Data data, long now) {
+        if (data == null || data.seeded) return;
+        data.seeded = true;
+        int keep = data.selected;
+        for (ItemStack s : defaults()) record(data, s, now);
+        data.selected = keep;
+        if (data.selected < 0 || data.selected >= data.entries.size()) {
+            for (int i = 0; i < data.entries.size(); ++i) if (data.entries.get(i).stack().is(Items.DIAMOND_SWORD)) data.selected = i;
+        }
+        data.dirty = true;
     }
 
     public static void touch(Data data, int index, long now) {

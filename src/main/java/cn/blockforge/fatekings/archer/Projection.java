@@ -175,6 +175,19 @@ public final class Projection {
                 break;
             }
         }
+        if (slot < 0) {
+            // A full hotbar: the copy still comes to hand. One other item (not his bow, blades or
+            // Unlimited Blade Works, not what he holds) steps back into the inventory to make room.
+            int free = inv.getFreeSlot();
+            for (int i = 0; i < Inventory.SELECTION_SIZE && free >= 0; ++i) {
+                ItemStack s = inv.getItem(i);
+                if (i == inv.getSelectedSlot() || archerGear(s)) continue;
+                inv.setItem(free, s);
+                inv.setItem(i, ItemStack.EMPTY);
+                slot = i;
+                break;
+            }
+        }
         if (slot >= 0) {
             inv.setItem(slot, copy);
             inv.setSelectedSlot(slot);
@@ -190,6 +203,10 @@ public final class Projection {
         traced(level, p);
         FateNet.actionBar(p, Component.translatable("fatekings.hint.projected", copy.getHoverName()));
         return true;
+    }
+
+    private static boolean archerGear(ItemStack s) {
+        return s.is(FateItems.BLACK_BOW) || FateItems.twinSword(s) || s.is(FateItems.UNLIMITED_BLADE_WORKS);
     }
 
     /** "Trace on": blue lines of light round the hand, the hum of a forge. */

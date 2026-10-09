@@ -26,6 +26,10 @@ public final class FxDraw {
     public static final Identifier TWIN_TRAIL = FateKings.id("textures/misc/twin_trail.png");
     public static final Identifier UBW_SKY = FateKings.id("textures/misc/ubw_sky.png");
     public static final Identifier UBW_GEAR = FateKings.id("textures/misc/ubw_gear.png");
+    public static final Identifier UBW_SUN = FateKings.id("textures/misc/ubw_sun.png");
+    public static final Identifier UBW_SUN_GLOW = FateKings.id("textures/misc/ubw_sun_glow.png");
+    public static final Identifier UBW_GROUND = FateKings.id("textures/misc/ubw_ground.png");
+    public static final Identifier UBW_MIST = FateKings.id("textures/misc/ubw_mist.png");
 
     private FxDraw() {
     }
@@ -40,6 +44,20 @@ public final class FxDraw {
 
     public static RenderType tex(Identifier id) {
         return RenderTypes.entityTranslucentEmissive(id);
+    }
+
+    /**
+     * Opaque, unlit and writing depth (the opaque beacon-beam type): for surfaces that must hide what
+     * lies behind them whatever order the frame's translucent layers are drawn in, such as the sky
+     * and the ground of a reality marble.
+     */
+    public static RenderType opaque(Identifier id) {
+        return RenderTypes.beaconBeam(id, false);
+    }
+
+    /** Translucent and unlit (the beacon's outer glow): light that is not shaded by which way it faces. */
+    public static RenderType light(Identifier id) {
+        return RenderTypes.beaconBeam(id, true);
     }
 
     public static int argb(int a, int rgb) {
@@ -80,7 +98,13 @@ public final class FxDraw {
     /** A textured, full-bright quad drawn from both sides. */
     public static void texQuad(PoseStack pose, PortBuffers b, Identifier tex, Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3, int c,
                                float u0, float v0, float u1, float v1) {
-        VertexConsumer vc = b.getBuffer(tex(tex));
+        texQuad(pose, b, tex(tex), p0, p1, p2, p3, c, u0, v0, u1, v1);
+    }
+
+    /** A textured quad drawn from both sides in the given render type. */
+    public static void texQuad(PoseStack pose, PortBuffers b, RenderType type, Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3, int c,
+                               float u0, float v0, float u1, float v1) {
+        VertexConsumer vc = b.getBuffer(type);
         Matrix4f m = pose.last().pose();
         Vec3 n = p1.subtract(p0).cross(p3.subtract(p0));
         n = n.lengthSqr() < 1.0E-8 ? new Vec3(0, 1, 0) : n.normalize();
@@ -113,11 +137,15 @@ public final class FxDraw {
 
     /** A square sprite centred on {@code c} facing along {@code normal}, rotated by {@code spin}. */
     public static void sprite(PoseStack pose, PortBuffers b, Identifier tex, Vec3 c, Vec3 normal, float r, float spin, int color) {
+        sprite(pose, b, tex(tex), c, normal, r, spin, color);
+    }
+
+    public static void sprite(PoseStack pose, PortBuffers b, RenderType type, Vec3 c, Vec3 normal, float r, float spin, int color) {
         Vec3[] uv = basis(normal);
         double cs = Math.cos(spin), sn = Math.sin(spin);
         Vec3 a = uv[0].scale(cs).add(uv[1].scale(sn)).scale(r);
         Vec3 d = uv[0].scale(-sn).add(uv[1].scale(cs)).scale(r);
-        texQuad(pose, b, tex, c.subtract(a).subtract(d), c.add(a).subtract(d), c.add(a).add(d), c.subtract(a).add(d), color, 0, 0, 1, 1);
+        texQuad(pose, b, type, c.subtract(a).subtract(d), c.add(a).subtract(d), c.add(a).add(d), c.subtract(a).add(d), color, 0, 0, 1, 1);
     }
 
     /** A camera-facing band from {@code a} to {@code b}. */
@@ -148,6 +176,50 @@ public final class FxDraw {
                     j / (float)lon, i / (float)lat, (j + 1) / (float)lon, (i + 1) / (float)lat);
             }
         }
+    }
+
+    /**
+     * The same sphere cut at a domain seam: quads wholly beyond it are left out and the corners of
+     * those that cross it are pulled onto it, so the edge follows the seam.
+     */
+    public static void texSphere(PoseStack pose, PortBuffers b, Identifier tex, Vec3 c, float r, int lat, int lon, int color, DomainSeam.Clip clip) {
+        texSphere(pose, b, tex(tex), c, r, lat, lon, color, clip);
+    }
+
+    /** The same in a given render type (see {@link #opaque}). */
+    public static void texSphere(PoseStack pose, PortBuffers b, RenderType type, Vec3 c, float r, int lat, int lon, int color, DomainSeam.Clip clip) {
+        for (int i = 0; i < lat; ++i) {
+            double t0 = Math.PI * i / lat, t1 = Math.PI * (i + 1) / lat;
+            for (int j = 0; j < lon; ++j) {
+                double p0 = Math.PI * 2 * j / lon, p1 = Math.PI * 2 * (j + 1) / lon;
+                Vec3 a = sp(c, r, t0, p0), bb = sp(c, r, t0, p1), cc = sp(c, r, t1, p1), d = sp(c, r, t1, p0);
+                if (clip != null) {
+                    if (!clip.keeps(a) && !clip.keeps(bb) && !clip.keeps(cc) && !clip.keeps(d)) continue;
+                    a = clip.onto(a);
+                    bb = clip.onto(bb);
+                    cc = clip.onto(cc);
+                    d = clip.onto(d);
+                }
+                texQuad(pose, b, type, a, bb, cc, d, color,
+                    j / (float)lon, i / (float)lat, (j + 1) / (float)lon, (i + 1) / (float)lat);
+            }
+        }
+    }
+
+    /** A textured quad facing along {@code normal} and kept upright (its up as near the world's up as it can be). */
+    public static void upright(PoseStack pose, PortBuffers b, Identifier tex, Vec3 c, Vec3 normal, float halfW, float halfH, int color,
+                               float u0, float v0, float u1, float v1) {
+        upright(pose, b, tex(tex), c, normal, halfW, halfH, color, u0, v0, u1, v1);
+    }
+
+    public static void upright(PoseStack pose, PortBuffers b, RenderType type, Vec3 c, Vec3 normal, float halfW, float halfH, int color,
+                               float u0, float v0, float u1, float v1) {
+        Vec3 n = normal.normalize();
+        Vec3 right = n.cross(new Vec3(0, 1, 0));
+        right = right.lengthSqr() < 1.0E-6 ? new Vec3(1, 0, 0) : right.normalize();
+        Vec3 up = right.cross(n).normalize();
+        Vec3 w = right.scale(halfW), h = up.scale(halfH);
+        texQuad(pose, b, type, c.subtract(w).add(h), c.add(w).add(h), c.add(w).subtract(h), c.subtract(w).subtract(h), color, u0, v0, u1, v1);
     }
 
     /** A flat ring between two radii in the plane perpendicular to {@code normal}. */

@@ -13,7 +13,7 @@ public final class KingSync {
     public static final String[] KEYS = {Skills.GOB_TAP, Skills.GOB_VOLLEY, Skills.GOB_RING, Skills.BAB_ILU, Skills.ENKIDU_HOOK,
         Skills.ENKIDU_BIND, Skills.VIMANA, Skills.ELIXIR, Skills.AUTODEFENDER, Skills.STRIKE_AIR, Skills.MANA_BURST,
         Skills.EXCALIBUR, Skills.WARHORSE, Skills.AVALON_LETHAL, Skills.AVALON_DOME, Skills.BOW_TAP, Skills.CALADBOLG, Skills.RHO_AIAS,
-        Skills.TWIN_THROW, Skills.CRANE_WING, Skills.TRACE, Skills.UBW, Skills.EXCALIBUR_REPLICA};
+        Skills.TWIN_THROW, Skills.CRANE_WING, Skills.TRACE, Skills.UBW, Skills.EXCALIBUR_REPLICA, Skills.BOW_TRIPLE};
 
     private KingSync() {
     }

@@ -25,7 +25,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The black bow. A tap looses a homing sword-arrow at once (no draw; one every 4 ticks, 2 inside his
- * own reality marble). Held 1.5 s and let go: Caladbolg II.
+ * own reality marble); sneak + attack, three in a fan. Held 1.5 s and let go: Caladbolg II.
  */
 public final class ArcherBow {
     private ArcherBow() {
@@ -58,6 +58,47 @@ public final class ArcherBow {
         ItemStack lookOf = UnlimitedBladeWorks.inside(caster) ? randomArsenal(caster) : ItemStack.EMPTY;
         ProjectedArrowEntity.loose(level, caster, origin, dir, target, lookOf);
         if (caster instanceof KingNpcEntity && caster.getRandom().nextInt(12) == 0 && !VoicePlayer.talking(caster)) VoicePlayer.say(caster, Voice.EMIYA_THERE);
+        TwinBlades.broadcastShot(level, caster);
+        return true;
+    }
+
+    /**
+     * Sneak + attack: three arrows at once in a fan, 8 degrees apart. With several foes ahead each
+     * arrow hunts a different one (the one aimed at takes the centre); with one, all three go for it.
+     */
+    public static boolean triple(LivingEntity caster) {
+        if (!Kings.isArcher(caster) || !(caster.level() instanceof ServerLevel level)) return false;
+        if (caster instanceof Player p && !p.getMainHandItem().is(cn.blockforge.fatekings.registry.FateItems.BLACK_BOW)) return false;
+        KingState s = Kings.of(caster);
+        long now = level.getGameTime();
+        if (!s.ready(Skills.BOW_TRIPLE, now)) return false;
+        boolean ubw = UnlimitedBladeWorks.inside(caster);
+        s.cooldown(Skills.BOW_TRIPLE, now, ArcherRules.bowTripleCooldown(ubw));
+        s.dirty = true;
+        Vec3 eye = caster.getEyePosition();
+        LivingEntity aimed = caster instanceof KingNpcEntity npc ? npc.getTarget() : Aim.of(caster, 96.0).entity();
+        if (aimed != null && !aimed.isAlive()) aimed = null;
+        Vec3 look = caster instanceof KingNpcEntity && aimed != null ? aimed.getBoundingBox().getCenter().subtract(eye).normalize() : caster.getViewVector(1.0f);
+        List<LivingEntity> foes = new java.util.ArrayList<>();
+        if (aimed != null) foes.add(aimed);
+        for (LivingEntity e : Targets.inCone(caster, eye, look, ArcherRules.ARROW_START_CONE_COS, ArcherRules.ARROW_START_RANGE)) {
+            if (e != aimed && foes.size() < 6) foes.add(e);
+        }
+        Vec3[] dirs = new Vec3[ArcherRules.TRIPLE_ARROWS];
+        double[][] dots = new double[dirs.length][foes.size()];
+        for (int i = 0; i < dirs.length; ++i) {
+            dirs[i] = look.yRot((float)Math.toRadians(ArcherRules.tripleYaw(i)));
+            for (int j = 0; j < foes.size(); ++j) dots[i][j] = dirs[i].dot(foes.get(j).getBoundingBox().getCenter().subtract(eye).normalize());
+        }
+        int[] pick = ArcherRules.tripleTargets(dots, aimed != null);
+        Vec3 side = new Vec3(-look.z, 0.0, look.x);
+        side = side.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : side.normalize();
+        for (int i = 0; i < dirs.length; ++i) {
+            Vec3 origin = eye.add(look.scale(0.7)).add(0.0, -0.15, 0.0).add(side.scale((i - 1) * 0.2));
+            ItemStack lookOf = ubw ? randomArsenal(caster) : ItemStack.EMPTY;
+            ProjectedArrowEntity.loose(level, caster, origin, dirs[i], pick[i] < 0 ? null : foes.get(pick[i]), lookOf);
+        }
+        level.playSound(null, caster.getX(), caster.getY(), caster.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.PLAYERS, 1.0f, 1.3f);
         TwinBlades.broadcastShot(level, caster);
         return true;
     }

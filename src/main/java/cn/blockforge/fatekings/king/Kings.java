@@ -130,6 +130,9 @@ public final class Kings {
         long now = now(p);
         int wanted = p.isSpectator() || !p.isAlive() ? KingRules.NONE : KingRules.kingOfSet(heroPieces(p), knightPieces(p), archerPieces(p));
         if (wanted != s.king) {
+            // A whole set swapped within one tick (commands, quick-swap mods): he leaves the old king
+            // first, so the swap lock applies as it does when the pieces come off one by one.
+            if (wanted != KingRules.NONE && s.king != KingRules.NONE) transition(p, s, KingRules.NONE, now);
             if (wanted != KingRules.NONE && !KingRules.mayEnter(wanted, s.lockedFrom, s.lockUntil, now)) {
                 if (now % 20 == 0) {
                     FateNet.actionBar(p, Component.translatable("fatekings.hint.swap_lock",
@@ -185,6 +188,7 @@ public final class Kings {
         s.gold = Math.min(s.gold, goldTarget(p));
         applyAttributes(p, s);
         if (to == KingRules.ARCHER) {
+            cn.blockforge.fatekings.archer.Arsenal.seed(cn.blockforge.fatekings.archer.Arsenal.of(p), now);
             // The Red Shroud: a flare of embers and the ring of a hammer on the anvil.
             Fx.event(level, Fx.ARRIVAL_ARCHER, p, p.position(), 40, 1.0f, 64.0);
             Fx.eventTo(p, Fx.TITLE_ARCHER, p, p.position(), 60, 1.0f);

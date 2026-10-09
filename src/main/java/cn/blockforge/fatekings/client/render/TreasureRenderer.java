@@ -9,7 +9,6 @@ import org.joml.Vector3f;
 
 /** A treasure in flight: the weapon itself, blade first, trailing gold light. */
 public class TreasureRenderer extends FxEntityRenderer<TreasureProjectile> {
-    private static final Vector3f BLADE = new Vector3f(1.0f, 1.0f, 0.0f).normalize();
 
     public TreasureRenderer(EntityRendererProvider.Context context) {
         super(context);

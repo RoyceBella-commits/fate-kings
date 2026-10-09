@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -128,6 +129,12 @@ public class UbwEntity extends Entity {
     }
 
     /** 0..1 as the ring of fire spreads, then 1, then 1..0 as the marble closes. */
+    /** How far the marble reaches as drawn (the fire running out to its wall); 0 once it has faded. */
+    public float visualRadius(float partial) {
+        if (openness(partial) <= 0.05f) return 0.0f;
+        return radius() * Math.min(1.0f, (life() + partial) / ArcherRules.UBW_UNFOLD);
+    }
+
     public float openness(float partial) {
         float t = life() + partial;
         float open = Math.min(1.0f, t / ArcherRules.UBW_UNFOLD);
@@ -331,11 +338,34 @@ public class UbwEntity extends Entity {
 
     private Vec3 groundNear(ServerLevel level, LivingEntity foe) {
         double a = this.random.nextDouble() * Math.PI * 2.0;
-        double d = 4.0 + this.random.nextDouble() * 5.0;
+        double d = 5.0 + this.random.nextDouble() * 6.0;
         double x = foe.getX() + Math.cos(a) * d, z = foe.getZ() + Math.sin(a) * d;
         int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int)Math.floor(x), (int)Math.floor(z));
         double y = Math.abs(top - foe.getY()) > 12.0 ? foe.getY() : top;
         return new Vec3(x, y, z);
+    }
+
+    /**
+     * Whether a treasure of the Gate of Babylon where it is now flies inside an open marble (not its
+     * own caster's): there it never lands, the hill's blades meet every one.
+     */
+    public static boolean shields(Entity treasure) {
+        if (!(treasure.level() instanceof ServerLevel)) return false;
+        Entity caster = treasure instanceof net.minecraft.world.entity.projectile.Projectile p ? p.getOwner() : null;
+        for (UbwEntity u : ACTIVE.values()) {
+            if (u.isRemoved() || u.level() != treasure.level() || !u.active()) continue;
+            if (caster != null && caster.getUUID().equals(u.ownerId)) continue;
+            if (u.contains(treasure.position())) return true;
+        }
+        return false;
+    }
+
+    /** A treasure struck from the air: a clang, sparks and embers where it broke. */
+    public static void parried(ServerLevel level, Vec3 at) {
+        Fx.particles(level, ParticleTypes.CRIT, at, 10, 0.25, 0.4);
+        Fx.particles(level, Fx.dust(Fx.EMBER, 1.1f), at, 8, 0.25, 0.05);
+        Fx.particles(level, Fx.dust(Fx.GOLD, 1.0f), at, 6, 0.2, 0.05);
+        level.playSound(null, at.x, at.y, at.z, SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 0.5f, 1.6f + level.getRandom().nextFloat() * 0.3f);
     }
 
     /** "The treasury cannot keep up with the forge": treasures fired inside are met by blades. */
@@ -345,7 +375,9 @@ public class UbwEntity extends Entity {
         for (UbwSwordEntity s : level.getEntitiesOfClass(UbwSwordEntity.class, getBoundingBox().inflate(r), UbwSwordEntity::intercepting)) ++flying;
         for (TreasureProjectile t : level.getEntitiesOfClass(TreasureProjectile.class, getBoundingBox().inflate(r), e -> e.isAlive() && contains(e.position()))) {
             if (t.getOwner() == owner || !this.rolled.add(t.getId())) continue;
-            if (flying >= ArcherRules.UBW_MAX_INTERCEPTORS || this.random.nextFloat() >= ArcherRules.UBW_INTERCEPT_CHANCE) continue;
+            // Every one is met; the blade in the air is the sight of it (a treasure that gets to
+            // anyone first shatters on its own, see shields).
+            if (flying >= ArcherRules.UBW_MAX_INTERCEPTORS) continue;
             Vec3 from = t.position().add(t.getDeltaMovement().normalize().scale(4.0)).add(0.0, -2.0, 0.0);
             UbwSwordEntity.intercept(level, owner, from, t, nextWeapon());
             ++flying;
